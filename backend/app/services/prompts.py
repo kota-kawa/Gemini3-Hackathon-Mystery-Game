@@ -151,3 +151,52 @@ def build_scoring_prompt(
         f"CASE_JSON: {case_json}\n"
         f"GUESS_JSON: {guess_json}"
     )
+
+
+def build_background_prompt(
+    *,
+    case_data: CaseFile,
+    language_mode: LanguageMode,
+) -> str:
+    setting = case_data.setting
+    style_line = (
+        "かわいいアニメ調の背景イラストにしてください。"
+        if language_mode == LanguageMode.JA
+        else "Create a cute anime-style background illustration."
+    )
+    return (
+        "Create one visual-novel background image for this mystery story.\n"
+        f"{style_line}\n"
+        "- Keep the image free of UI, speech bubbles, text, logos, and watermark.\n"
+        "- Show environment only; avoid close-up portraits.\n"
+        "- No blood, injuries, or explicit violence.\n"
+        "- Use soft cinematic lighting and rich environmental detail.\n"
+        "- Compose the scene so it reads well in a 9:16 frame.\n"
+        f"Story location: {setting.location}\n"
+        f"Story time window: {setting.time_window}\n"
+        f"Story summary: {setting.summary}"
+    )
+
+
+def build_conversation_summary_prompt(
+    *,
+    history: list[dict[str, str]],
+    language_mode: LanguageMode,
+    now: datetime | None = None,
+) -> str:
+    history_json = json.dumps(history, ensure_ascii=False)
+    datetime_line = _current_datetime_instruction(language_mode, now)
+    unknown_value = "unknown from conversation" if language_mode == LanguageMode.EN else "会話からは不明"
+    return (
+        "You summarize detective-game conversation logs.\n"
+        f"{_language_instruction(language_mode)}\n"
+        f"{datetime_line}\n"
+        "Return JSON only with keys: killer, method, motive, trick, highlights.\n"
+        "- killer/method/motive/trick must each be one concise sentence.\n"
+        "- highlights must be 1 to 3 concise items.\n"
+        "- Do not invent facts absent from the conversation.\n"
+        "- If evidence is insufficient for a field, set that field exactly to: "
+        f"{unknown_value}\n"
+        "- Prioritize explicit mentions related to culprit, method, motive, and trick.\n"
+        f"CONVERSATION_HISTORY_JSON: {history_json}"
+    )

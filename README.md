@@ -65,6 +65,7 @@ npm run dev
 | `LLM_PROVIDER` | `fake` | `fake` (offline demo) or `gemini` (real AI) |
 | `GEMINI_API_KEY` | - | Required when using Gemini |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model to use |
+| `GEMINI_IMAGE_MODEL` | `gemini-2.5-flash-image` | Gemini model used for story background generation |
 | `MAX_QUESTIONS` | `12` | Questions allowed per game |
 | `DATABASE_URL` | `sqlite:///./mystery_game.db` | Database connection |
 
@@ -76,6 +77,8 @@ npm run dev
 | `LLM_PROVIDER` | `fake` | `fake` or `gemini` |
 | `GEMINI_API_KEY` | - | Required for Gemini |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Model name |
+| `GEMINI_IMAGE_MODEL` | `gemini-2.5-flash-image` | Background image model name |
+| `GEMINI_BACKGROUND_ASPECT_RATIO` | `9:16` | Background image aspect ratio |
 | `GEMINI_API_VERSION` | `v1beta` | API version |
 | `GEMINI_THINKING_BUDGET` | `0` | `0` disables thinking for lowest latency |
 | `GEMINI_THINKING_LEVEL` | - | Legacy fallback (`minimal\|low\|medium\|high`) when budget is unset |
@@ -83,6 +86,7 @@ npm run dev
 | `GEMINI_RETRY_MAX_DELAY_SEC` | `20` | Max retry delay |
 | `GEMINI_MAX_ATTEMPTS` | `5` | Max attempts per request |
 | `GEMINI_FALLBACK_TO_FAKE` | `false` | Fallback to fake on failure |
+| `GENERATED_BACKGROUND_DIR` | `./generated_backgrounds` | Directory to store generated story backgrounds |
 | `DATABASE_URL` | `sqlite:///./mystery_game.db` | Database URL |
 | `MAX_QUESTIONS` | `12` | Questions per game |
 | `VITE_API_BASE_URL` | `http://localhost:8000` | API URL for frontend |
@@ -185,6 +189,7 @@ npm run dev
 | `LLM_PROVIDER` | `fake` | `fake`（オフラインデモ）または `gemini`（本番AI） |
 | `GEMINI_API_KEY` | - | Gemini使用時に必須 |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | 使用するGeminiモデル |
+| `GEMINI_IMAGE_MODEL` | `gemini-2.5-flash-image` | 背景生成に使うGeminiモデル |
 | `MAX_QUESTIONS` | `12` | ゲームあたりの質問回数 |
 | `DATABASE_URL` | `sqlite:///./mystery_game.db` | データベース接続先 |
 
@@ -196,6 +201,8 @@ npm run dev
 | `LLM_PROVIDER` | `fake` | `fake` または `gemini` |
 | `GEMINI_API_KEY` | - | Gemini使用時に必須 |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | モデル名 |
+| `GEMINI_IMAGE_MODEL` | `gemini-2.5-flash-image` | 背景画像生成モデル名 |
+| `GEMINI_BACKGROUND_ASPECT_RATIO` | `9:16` | 背景画像のアスペクト比 |
 | `GEMINI_API_VERSION` | `v1beta` | APIバージョン |
 | `GEMINI_THINKING_BUDGET` | `0` | `0`で思考を無効化し、最小レイテンシ |
 | `GEMINI_THINKING_LEVEL` | - | 旧設定（`minimal\|low\|medium\|high`）。budget未指定時のみ使用 |
@@ -203,6 +210,7 @@ npm run dev
 | `GEMINI_RETRY_MAX_DELAY_SEC` | `20` | リトライ最大待機秒 |
 | `GEMINI_MAX_ATTEMPTS` | `5` | 1リクエストの最大試行回数 |
 | `GEMINI_FALLBACK_TO_FAKE` | `false` | 失敗時にfakeへフォールバック |
+| `GENERATED_BACKGROUND_DIR` | `./generated_backgrounds` | 生成背景画像の保存先ディレクトリ |
 | `DATABASE_URL` | `sqlite:///./mystery_game.db` | データベースURL |
 | `MAX_QUESTIONS` | `12` | ゲームあたりの質問回数 |
 | `VITE_API_BASE_URL` | `http://localhost:8000` | フロントエンド用API URL |

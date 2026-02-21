@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     llm_provider: str = "fake"
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.5-flash"
+    gemini_image_model: str = "gemini-2.5-flash-image"
+    gemini_background_aspect_ratio: str = "9:16"
     gemini_api_version: str = "v1beta"
     gemini_thinking_budget: int | None = 0
     gemini_thinking_level: str | None = None
@@ -19,6 +21,7 @@ class Settings(BaseSettings):
     gemini_retry_max_delay_sec: float = 20.0
     gemini_max_attempts: int = 5
     gemini_fallback_to_fake: bool = False
+    generated_background_dir: str = "./generated_backgrounds"
     cors_allow_origins: list[str] = Field(default_factory=lambda: ["*"])
 
     model_config = SettingsConfigDict(

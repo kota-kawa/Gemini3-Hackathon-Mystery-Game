@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import logging
 import uuid
+from pathlib import Path
 
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -15,6 +17,7 @@ from ..schemas import (
     CaseFile,
     CharacterPublicResponse,
     CaseSummaryResponse,
+    ConversationSummaryResponse,
     GameStateResponse,
     GuessRequest,
     MessageResponse,
@@ -23,10 +26,15 @@ from ..schemas import (
     UnlockedEvidenceResponse,
 )
 from .follow_up import append_follow_up_block, heuristic_follow_up_questions, split_answer_and_follow_up_questions
-from .llm_client import LLMClient, LLMError
+from .llm_client import GeneratedImage, LLMClient, LLMError
 from .scoring_service import ScoringService
 
 logger = logging.getLogger(__name__)
+MEDIA_TYPE_TO_EXTENSION = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
+}
 
 
 class GameService:
@@ -64,6 +72,11 @@ class GameService:
         self.db.add(game)
         self.db.commit()
         self.db.refresh(game)
+        background_image_url = self._generate_story_background(
+            game_id=game.id,
+            case_obj=case_obj,
+            language_mode=language_mode,
+        )
 
         return NewGameResponse(
             game_id=game.id,
@@ -72,6 +85,7 @@ class GameService:
             initial_state=GameStatus(game.status),
             remaining_questions=game.remaining_questions,
             language_mode=LanguageMode(game.language_mode),
+            background_image_url=background_image_url,
         )
 
     def ask(self, game_id: str, request: AskRequest):
@@ -85,14 +99,7 @@ class GameService:
         case_obj = self._case_of_game(game)
         language_mode = LanguageMode(game.language_mode)
 
-        history: list[dict[str, str]] = []
-        for message in game.messages:
-            clean_answer, _ = split_answer_and_follow_up_questions(
-                message.answer_text,
-                language_mode=LanguageMode(message.language_mode),
-                with_default=False,
-            )
-            history.append({"question": message.question, "answer": clean_answer})
+        history = self._history_of_game(game)
 
         try:
             raw_answer = self.llm_client.answer_question(
@@ -184,6 +191,64 @@ class GameService:
             "status": GameStatus(game.status),
             "unlocked_evidence": unlocked,
         }
+
+    def summarize_conversation(self, game_id: str) -> ConversationSummaryResponse:
+        game = self._get_game_or_404(game_id)
+        if GameStatus(game.status) == GameStatus.ENDED:
+            raise conflict(
+                "ENDED状態のゲームは要約できません。",
+                detail={"status": game.status},
+            )
+
+        language_mode = LanguageMode(game.language_mode)
+        case_obj = self._case_of_game(game)
+        history = self._history_of_game(game)
+
+        unknown = "unknown from conversation" if language_mode == LanguageMode.EN else "会話からは不明"
+        if not history:
+            no_messages = "No chat messages yet." if language_mode == LanguageMode.EN else "まだ会話ログがありません。"
+            return ConversationSummaryResponse(
+                killer=unknown,
+                method=unknown,
+                motive=unknown,
+                trick=unknown,
+                highlights=[no_messages],
+            )
+
+        try:
+            raw = self.llm_client.summarize_conversation(
+                case_data=case_obj,
+                history=history,
+                language_mode=language_mode,
+            )
+        except LLMError as exc:
+            raise gemini_error(
+                "会話要約の生成に失敗しました。再試行してください。",
+                detail={"cause": str(exc)},
+            ) from exc
+
+        if not isinstance(raw, dict):
+            raw = {}
+
+        highlights_raw = raw.get("highlights")
+        highlights: list[str] = []
+        if isinstance(highlights_raw, list):
+            for item in highlights_raw:
+                if not isinstance(item, str):
+                    continue
+                cleaned = item.strip()
+                if cleaned and cleaned not in highlights:
+                    highlights.append(cleaned)
+                if len(highlights) >= 3:
+                    break
+
+        return ConversationSummaryResponse(
+            killer=self._normalize_summary_value(raw.get("killer"), unknown),
+            method=self._normalize_summary_value(raw.get("method"), unknown),
+            motive=self._normalize_summary_value(raw.get("motive"), unknown),
+            trick=self._normalize_summary_value(raw.get("trick"), unknown),
+            highlights=highlights,
+        )
 
     def submit_guess(self, game_id: str, request: GuessRequest):
         game = self._get_game_or_404(game_id)
@@ -287,11 +352,30 @@ class GameService:
             status=GameStatus(game.status),
             remaining_questions=game.remaining_questions,
             language_mode=LanguageMode(game.language_mode),
+            background_image_url=self._background_image_url(game.id),
             case_summary=self._case_summary(case_obj),
             characters=self._public_characters(case_obj),
             unlocked_evidence=unlocked,
             messages=messages,
         )
+
+    def get_background_asset(self, game_id: str) -> tuple[Path, str]:
+        _ = self._get_game_or_404(game_id)
+        meta = self._load_background_meta(game_id)
+        if not meta:
+            raise not_found("背景画像が見つかりません。", detail={"game_id": game_id})
+
+        file_name = meta.get("file_name")
+        media_type = meta.get("media_type")
+        if not isinstance(file_name, str) or not file_name:
+            raise not_found("背景画像が見つかりません。", detail={"game_id": game_id})
+        if not isinstance(media_type, str) or not media_type:
+            media_type = "image/png"
+
+        image_path = self._background_dir() / file_name
+        if not image_path.is_file():
+            raise not_found("背景画像が見つかりません。", detail={"game_id": game_id})
+        return image_path, media_type
 
     def move_to_guessing(self, game_id: str) -> None:
         game = self._get_game_or_404(game_id)
@@ -304,6 +388,94 @@ class GameService:
         game = self._get_game_or_404(game_id)
         game.status = GameStatus.ENDED.value
         self.db.commit()
+
+    def _background_dir(self) -> Path:
+        path = Path(self.settings.generated_background_dir).expanduser()
+        if not path.is_absolute():
+            path = Path.cwd() / path
+        return path
+
+    def _background_meta_path(self, game_id: str) -> Path:
+        return self._background_dir() / f"{game_id}.json"
+
+    def _load_background_meta(self, game_id: str) -> dict[str, str] | None:
+        meta_path = self._background_meta_path(game_id)
+        if not meta_path.is_file():
+            return None
+
+        try:
+            data = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            logger.warning("Failed to read background metadata for game_id=%s", game_id)
+            return None
+
+        if not isinstance(data, dict):
+            return None
+        return {
+            "file_name": str(data.get("file_name", "")),
+            "media_type": str(data.get("media_type", "")),
+        }
+
+    def _background_image_url(self, game_id: str) -> str | None:
+        meta = self._load_background_meta(game_id)
+        if not meta:
+            return None
+
+        file_name = meta.get("file_name", "")
+        if not file_name:
+            return None
+
+        image_path = self._background_dir() / file_name
+        if not image_path.is_file():
+            return None
+        return f"/api/game/{game_id}/background"
+
+    def _store_background_image(self, game_id: str, generated: GeneratedImage) -> str:
+        media_type = generated.mime_type.strip().lower()
+        extension = MEDIA_TYPE_TO_EXTENSION.get(media_type, "png")
+        directory = self._background_dir()
+        directory.mkdir(parents=True, exist_ok=True)
+
+        for existing in directory.glob(f"{game_id}.*"):
+            if existing.is_file():
+                existing.unlink()
+
+        file_name = f"{game_id}.{extension}"
+        image_path = directory / file_name
+        image_path.write_bytes(generated.data)
+
+        meta_path = self._background_meta_path(game_id)
+        meta = {"file_name": file_name, "media_type": media_type}
+        meta_path.write_text(json.dumps(meta), encoding="utf-8")
+        return f"/api/game/{game_id}/background"
+
+    def _generate_story_background(
+        self,
+        *,
+        game_id: str,
+        case_obj: CaseFile,
+        language_mode: LanguageMode,
+    ) -> str | None:
+        try:
+            generated = self.llm_client.generate_background_image(
+                case_data=case_obj,
+                language_mode=language_mode,
+            )
+        except LLMError as exc:
+            logger.warning("Background image generation failed for game_id=%s: %s", game_id, exc)
+            return None
+
+        if generated is None:
+            return None
+        if not generated.data:
+            logger.warning("Background image generation returned empty data for game_id=%s", game_id)
+            return None
+
+        try:
+            return self._store_background_image(game_id, generated)
+        except OSError as exc:
+            logger.warning("Failed to store background image for game_id=%s: %s", game_id, exc)
+            return None
 
     def _generate_validated_case(self, language_mode: LanguageMode) -> CaseFile:
         errors: list[str] = []
@@ -328,6 +500,25 @@ class GameService:
         if game is None:
             raise not_found("指定されたゲームが見つかりません。", detail={"game_id": game_id})
         return game
+
+    @staticmethod
+    def _normalize_summary_value(value: object, unknown: str) -> str:
+        if not isinstance(value, str):
+            return unknown
+        cleaned = value.strip()
+        return cleaned if cleaned else unknown
+
+    @staticmethod
+    def _history_of_game(game: Game) -> list[dict[str, str]]:
+        history: list[dict[str, str]] = []
+        for message in sorted(game.messages, key=lambda m: m.created_at):
+            clean_answer, _ = split_answer_and_follow_up_questions(
+                message.answer_text,
+                language_mode=LanguageMode(message.language_mode),
+                with_default=False,
+            )
+            history.append({"question": message.question, "answer": clean_answer})
+        return history
 
     def _case_of_game(self, game: Game) -> CaseFile:
         if game.case is None:

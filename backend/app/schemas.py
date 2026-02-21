@@ -145,6 +145,7 @@ class NewGameResponse(BaseModel):
     initial_state: GameStatus
     remaining_questions: int
     language_mode: LanguageMode
+    background_image_url: str | None = None
 
 
 class AskRequest(BaseModel):
@@ -191,6 +192,14 @@ class GuessResponse(BaseModel):
     solution_summary: str
 
 
+class ConversationSummaryResponse(BaseModel):
+    killer: str
+    method: str
+    motive: str
+    trick: str
+    highlights: list[str] = Field(default_factory=list)
+
+
 class PatchLanguageRequest(BaseModel):
     language_mode: LanguageMode
 
@@ -216,6 +225,7 @@ class GameStateResponse(BaseModel):
     status: GameStatus
     remaining_questions: int
     language_mode: LanguageMode
+    background_image_url: str | None = None
     case_summary: CaseSummaryResponse
     characters: list[CharacterPublicResponse]
     unlocked_evidence: list[UnlockedEvidenceResponse]

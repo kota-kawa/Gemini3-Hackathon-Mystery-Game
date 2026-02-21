@@ -1,3 +1,4 @@
+import base64
 from collections.abc import Generator
 
 import pytest
@@ -9,7 +10,7 @@ from app.enums import LanguageMode
 from app.main import app, get_game_service
 from app.services.game_service import GameService
 from app.services.local_case_factory import build_local_case
-from app.services.llm_client import GeminiLLMClient, LLMClient, LLMError
+from app.services.llm_client import GeminiLLMClient, GeneratedImage, LLMClient, LLMError
 from app.services.scoring_service import ScoringService
 
 
@@ -26,11 +27,15 @@ class FailingLLMClient(LLMClient):
     def score_guess(self, **kwargs):
         raise LLMError("forced failure")
 
+    def summarize_conversation(self, **kwargs):
+        raise LLMError("forced failure")
+
 
 @pytest.fixture(autouse=True)
 def isolate_settings_env(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
     monkeypatch.setenv("LLM_PROVIDER", "fake")
     monkeypatch.setenv("GEMINI_FALLBACK_TO_FAKE", "false")
+    monkeypatch.setenv("GENERATED_BACKGROUND_DIR", "/tmp/mystery-game-backgrounds-tests")
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
@@ -192,6 +197,15 @@ def test_ask_succeeds_when_contradiction_check_fails(client: TestClient) -> None
         def score_guess(self, **kwargs):
             return None
 
+        def summarize_conversation(self, **kwargs):
+            return {
+                "killer": "会話からは不明",
+                "method": "会話からは不明",
+                "motive": "会話からは不明",
+                "trick": "会話からは不明",
+                "highlights": ["停電の空白時間をまず確認してください。"],
+            }
+
     def override_game_service() -> GameService:
         db = SessionLocal()
         return GameService(
@@ -229,7 +243,11 @@ def test_gemini_provider_falls_back_to_fake(client: TestClient, monkeypatch: pyt
     def force_gemini_failure(self, *, prompt: str, response_mime_type: str, response_schema=None) -> str:
         raise LLMError("forced gemini failure")
 
+    def force_gemini_image_failure(self, *, prompt: str):
+        raise LLMError("forced gemini image failure")
+
     monkeypatch.setattr(GeminiLLMClient, "_request_with_retry", force_gemini_failure)
+    monkeypatch.setattr(GeminiLLMClient, "_request_background_image_with_retry", force_gemini_image_failure)
     app.dependency_overrides[get_settings] = override_settings
 
     create_res = client.post("/api/game/new", json={"language_mode": "ja"})
@@ -262,5 +280,83 @@ def test_gemini_failure_returns_502(client: TestClient) -> None:
     body = res.json()
     assert body["error_code"] == "GEMINI_UNAVAILABLE"
     assert body["retryable"] is True
+
+    app.dependency_overrides = {}
+
+
+def test_conversation_summary_endpoint(client: TestClient) -> None:
+    create_res = client.post("/api/game/new", json={"language_mode": "ja"})
+    assert create_res.status_code == 201
+    game_id = create_res.json()["game_id"]
+
+    ask_res = client.post(
+        f"/api/game/{game_id}/ask",
+        json={"question": "証拠を1つ教えて"},
+    )
+    assert ask_res.status_code == 200
+
+    summary_res = client.post(f"/api/game/{game_id}/summarize")
+    assert summary_res.status_code == 200
+    summary = summary_res.json()
+    assert "killer" in summary
+    assert "method" in summary
+    assert "motive" in summary
+    assert "trick" in summary
+    assert isinstance(summary["highlights"], list)
+
+
+def test_background_endpoint_returns_generated_image(client: TestClient) -> None:
+    class ImageGeneratingLLMClient(LLMClient):
+        def generate_case(self, language_mode: LanguageMode):
+            return build_local_case(language_mode)
+
+        def answer_question(self, **kwargs):
+            return "手掛かりを照合してください。"
+
+        def contradiction_check(self, **kwargs):
+            return {"contradiction": False, "fixed_answer": "手掛かりを照合してください。"}
+
+        def score_guess(self, **kwargs):
+            return None
+
+        def summarize_conversation(self, **kwargs):
+            return {
+                "killer": "会話からは不明",
+                "method": "会話からは不明",
+                "motive": "会話からは不明",
+                "trick": "会話からは不明",
+                "highlights": ["手掛かりを照合してください。"],
+            }
+
+        def generate_background_image(self, **kwargs):
+            png_bytes = base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7+f0UAAAAASUVORK5CYII="
+            )
+            return GeneratedImage(data=png_bytes, mime_type="image/png")
+
+    def override_game_service() -> GameService:
+        db = SessionLocal()
+        return GameService(
+            db=db,
+            llm_client=ImageGeneratingLLMClient(),
+            scoring_service=ScoringService(),
+            settings=get_settings(),
+        )
+
+    app.dependency_overrides[get_game_service] = override_game_service
+
+    create_res = client.post("/api/game/new", json={"language_mode": "ja"})
+    assert create_res.status_code == 201
+    game_id = create_res.json()["game_id"]
+    assert create_res.json()["background_image_url"] == f"/api/game/{game_id}/background"
+
+    state_res = client.get(f"/api/game/{game_id}")
+    assert state_res.status_code == 200
+    assert state_res.json()["background_image_url"] == f"/api/game/{game_id}/background"
+
+    bg_res = client.get(f"/api/game/{game_id}/background")
+    assert bg_res.status_code == 200
+    assert bg_res.headers["content-type"].startswith("image/png")
+    assert len(bg_res.content) > 0
 
     app.dependency_overrides = {}

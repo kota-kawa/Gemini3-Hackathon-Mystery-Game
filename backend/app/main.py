@@ -1,6 +1,7 @@
 from fastapi import Body, Depends, FastAPI, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from .config import Settings, get_settings
@@ -9,6 +10,7 @@ from .errors import AppError, app_error_handler, unhandled_error_handler, valida
 from .schemas import (
     AskRequest,
     AskResponse,
+    ConversationSummaryResponse,
     ErrorResponse,
     GameStateResponse,
     GuessRequest,
@@ -105,6 +107,22 @@ def ask_question(
 
 
 @app.post(
+    "/api/game/{game_id}/summarize",
+    response_model=ConversationSummaryResponse,
+    responses={
+        404: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        502: {"model": ErrorResponse},
+    },
+)
+def summarize_conversation(
+    game_id: str,
+    service: GameService = Depends(get_game_service),
+) -> ConversationSummaryResponse:
+    return service.summarize_conversation(game_id)
+
+
+@app.post(
     "/api/game/{game_id}/guess",
     response_model=GuessResponse,
     responses={
@@ -158,3 +176,15 @@ def ready_to_guess(
 )
 def end_game(game_id: str, service: GameService = Depends(get_game_service)) -> None:
     service.end_game(game_id)
+
+
+@app.get(
+    "/api/game/{game_id}/background",
+    responses={404: {"model": ErrorResponse}},
+)
+def get_game_background(
+    game_id: str,
+    service: GameService = Depends(get_game_service),
+) -> FileResponse:
+    image_path, media_type = service.get_background_asset(game_id)
+    return FileResponse(image_path, media_type=media_type)

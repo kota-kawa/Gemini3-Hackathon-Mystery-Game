@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ApiRequestError,
@@ -8,10 +8,12 @@ import {
   getGame,
   patchLanguage,
   readyToGuess,
+  summarizeConversation,
   submitGuess,
+  toApiUrl,
 } from './api';
 import { t } from './i18n';
-import type { GameStateResponse, GuessResponse, LanguageMode } from './types';
+import type { ConversationSummaryResponse, GameStateResponse, GuessResponse, LanguageMode } from './types';
 
 type Screen = 'title' | 'game' | 'result';
 type ReasoningStyle = 'evidence' | 'timeline' | 'elimination';
@@ -166,6 +168,31 @@ function formatReadableText(text: string): string {
     .join('\n');
 }
 
+function buildConversationSummaryLines(
+  summary: ConversationSummaryResponse,
+  text: ReturnType<typeof t>,
+): string[] {
+  const highlights = summary.highlights.filter((line) => line.trim().length > 0);
+  const lines = [
+    `${text.summaryCategoryKiller}: ${summary.killer || text.summaryUnknown}`,
+    `${text.summaryCategoryMethod}: ${summary.method || text.summaryUnknown}`,
+    `${text.summaryCategoryMotive}: ${summary.motive || text.summaryUnknown}`,
+    `${text.summaryCategoryTrick}: ${summary.trick || text.summaryUnknown}`,
+  ];
+  if (highlights.length === 0) {
+    return lines;
+  }
+  return [...lines, ...highlights.map((line) => `${text.summaryCategoryOverall}: ${line}`)];
+}
+
+function resolveBackgroundImageUrl(state: GameStateResponse | null): string | null {
+  const path = state?.background_image_url?.trim();
+  if (!path) {
+    return null;
+  }
+  return toApiUrl(path);
+}
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>('title');
   const [languageMode, setLanguageMode] = useState<LanguageMode>('ja');
@@ -181,7 +208,9 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState('');
   const [uiMode, setUiMode] = useState<UiMode>('dialogue');
   const [isQaLogExpanded, setIsQaLogExpanded] = useState(true);
+  const [conversationSummary, setConversationSummary] = useState<string[]>([]);
   const [showBriefing, setShowBriefing] = useState(false);
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
   const qaLogRef = useRef<HTMLDivElement>(null);
 
   const text = useMemo(() => t(languageMode), [languageMode]);
@@ -199,6 +228,16 @@ export default function App() {
     }
     const saved = localStorage.getItem(memoKey(gameId)) ?? '';
     setMemo(saved);
+  }, [gameId]);
+
+  useEffect(() => {
+    setBackgroundImageUrl(resolveBackgroundImageUrl(gameState));
+  }, [gameState]);
+
+  useEffect(() => {
+    if (!gameId) {
+      setBackgroundImageUrl(null);
+    }
   }, [gameId]);
 
   useEffect(() => {
@@ -239,6 +278,7 @@ export default function App() {
       setGuessForm({ ...emptyGuess, killer: state.characters[0]?.name ?? '' });
       setUiMode('dialogue');
       setIsQaLogExpanded(true);
+      setConversationSummary([]);
       setShowBriefing(true);
       setScreen('game');
     } catch (error) {
@@ -251,6 +291,7 @@ export default function App() {
   const handleLanguageChange = async (mode: LanguageMode) => {
     setLanguageMode(mode);
     setSuggestedQuestions([]);
+    setConversationSummary([]);
     if (!gameId) {
       return;
     }
@@ -281,6 +322,7 @@ export default function App() {
       setQuestion('');
       setUiMode('qa');
       setIsQaLogExpanded(true);
+      setConversationSummary([]);
     } catch (error) {
       setErrorMessage(resolveError(error));
     } finally {
@@ -291,6 +333,22 @@ export default function App() {
   const handleAsk = async (event: FormEvent) => {
     event.preventDefault();
     await submitQuestion(question);
+  };
+
+  const handleSummarizeConversation = async () => {
+    if (!gameState || !gameId || loading) {
+      return;
+    }
+    setLoading(true);
+    setErrorMessage('');
+    try {
+      const summary = await summarizeConversation(gameId);
+      setConversationSummary(buildConversationSummaryLines(summary, text));
+    } catch (error) {
+      setErrorMessage(resolveError(error));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOpenGuess = () => {
@@ -351,6 +409,7 @@ export default function App() {
     setShowBriefing(false);
     setUiMode('dialogue');
     setIsQaLogExpanded(true);
+    setConversationSummary([]);
     setScreen('title');
     await handleStartGame();
   };
@@ -398,6 +457,14 @@ export default function App() {
 
   const storyFlow = [text.navStart, text.navGame, text.navGuess, text.navResult];
 
+  const appShellStyle = useMemo(
+    () =>
+      backgroundImageUrl
+        ? ({ '--story-background-url': `url("${backgroundImageUrl}")` } as CSSProperties)
+        : undefined,
+    [backgroundImageUrl],
+  );
+
   // Helper to get latest message content
   const latestMessage = useMemo(() => {
     if (!gameState || gameState.messages.length === 0) {
@@ -436,7 +503,7 @@ export default function App() {
   }, [gameState, languageMode]);
 
   return (
-    <div className={`app-shell ${isImmersive ? 'app-shell-immersive' : ''}`}>
+    <div className={`app-shell ${isImmersive ? 'app-shell-immersive' : ''}`} style={appShellStyle}>
       {screen === 'title' && (
         <>
           <header className="hero hero-title">
@@ -637,13 +704,23 @@ export default function App() {
                   <section className="vn-qa-log-section">
                     <div className="row-between vn-qa-log-header">
                       <h3>{text.chatTitle}</h3>
-                      <button
-                        className="secondary-btn vn-log-toggle-btn"
-                        type="button"
-                        onClick={() => setIsQaLogExpanded((current) => !current)}
-                      >
-                        {isQaLogExpanded ? text.hideLog : text.showLog}
-                      </button>
+                      <div className="vn-qa-log-actions">
+                        <button
+                          className="secondary-btn vn-summary-btn"
+                          type="button"
+                          onClick={() => void handleSummarizeConversation()}
+                          disabled={loading || gameState.messages.length === 0}
+                        >
+                          {text.summarizeConversation}
+                        </button>
+                        <button
+                          className="secondary-btn vn-log-toggle-btn"
+                          type="button"
+                          onClick={() => setIsQaLogExpanded((current) => !current)}
+                        >
+                          {isQaLogExpanded ? text.hideLog : text.showLog}
+                        </button>
+                      </div>
                     </div>
                     {isQaLogExpanded && (
                       <div ref={qaLogRef} className="chat-log full-height vn-qa-log">
@@ -693,6 +770,15 @@ export default function App() {
                         </button>
                       ))}
                     </div>
+                    <section className="conversation-summary-panel" aria-live="polite">
+                      <h3>{text.conversationSummaryTitle}</h3>
+                      <p className="conversation-summary-hint">{text.conversationSummaryHint}</p>
+                      <ul className="conversation-summary-list">
+                        {(conversationSummary.length > 0 ? conversationSummary : [text.summaryNotGenerated]).map((line, index) => (
+                          <li key={`${line}-${index}`}>{line}</li>
+                        ))}
+                      </ul>
+                    </section>
                   </form>
                 </div>
               </div>

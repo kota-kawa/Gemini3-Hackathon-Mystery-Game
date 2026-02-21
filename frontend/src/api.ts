@@ -1,5 +1,6 @@
 import type {
   AskResponse,
+  ConversationSummaryResponse,
   GameStateResponse,
   GuessResponse,
   LanguageMode,
@@ -7,6 +8,12 @@ import type {
 } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+
+function joinApiUrl(path: string): string {
+  const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${normalizedPath}`;
+}
 
 class ApiRequestError extends Error {
   status: number;
@@ -18,7 +25,7 @@ class ApiRequestError extends Error {
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(joinApiUrl(path), {
     headers: {
       'Content-Type': 'application/json',
       ...(options?.headers ?? {}),
@@ -45,6 +52,9 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export { ApiRequestError };
+export function toApiUrl(path: string): string {
+  return joinApiUrl(path);
+}
 
 export function createGame(language_mode: LanguageMode): Promise<NewGameResponse> {
   return apiFetch('/api/game/new', {
@@ -73,6 +83,12 @@ export function patchLanguage(gameId: string, language_mode: LanguageMode) {
 
 export function readyToGuess(gameId: string) {
   return apiFetch(`/api/game/${gameId}/ready-to-guess`, {
+    method: 'POST',
+  });
+}
+
+export function summarizeConversation(gameId: string): Promise<ConversationSummaryResponse> {
+  return apiFetch(`/api/game/${gameId}/summarize`, {
     method: 'POST',
   });
 }

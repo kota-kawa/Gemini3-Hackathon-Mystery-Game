@@ -40,6 +40,7 @@ export interface NewGameResponse {
   initial_state: GameStatus;
   remaining_questions: number;
   language_mode: LanguageMode;
+  background_image_url?: string | null;
 }
 
 export interface AskResponse {
@@ -67,11 +68,20 @@ export interface GuessResponse {
   solution_summary: string;
 }
 
+export interface ConversationSummaryResponse {
+  killer: string;
+  method: string;
+  motive: string;
+  trick: string;
+  highlights: string[];
+}
+
 export interface GameStateResponse {
   game_id: string;
   status: GameStatus;
   remaining_questions: number;
   language_mode: LanguageMode;
+  background_image_url?: string | null;
   case_summary: CaseSummary;
   characters: CharacterPublic[];
   unlocked_evidence: UnlockedEvidence[];

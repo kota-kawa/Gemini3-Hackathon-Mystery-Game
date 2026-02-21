@@ -2,6 +2,8 @@
 *.db
 *.sqlite3
 *.Identifier
+generated_backgrounds/
+backend/generated_backgrounds/
 
 # Python
 __pycache__/

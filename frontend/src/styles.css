@@ -15,6 +15,7 @@
   --shadow-glow: 0 0 20px rgba(149, 117, 205, 0.3);
   --radius: 16px;
   --radius-lg: 24px;
+  --story-background-url: url('./assets/images/game-background.png');
 }
 
 * {
@@ -85,7 +86,7 @@ body::before {
   z-index: -2;
   background-image:
     linear-gradient(180deg, rgba(8, 8, 12, 0.6) 0%, rgba(8, 8, 12, 0.78) 100%),
-    url('./assets/images/game-background.png');
+    var(--story-background-url);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -1092,7 +1093,7 @@ textarea {
   flex-direction: column;
   justify-content: flex-end;
   pointer-events: none; /* Let clicks pass through to background if needed, but mainly for layering */
-  background-image: url('./assets/images/game-background.png');
+  background-image: var(--story-background-url);
   background-size: cover;
   background-position: center;
   z-index: 50;
@@ -1324,8 +1325,9 @@ textarea {
   border: 1px solid rgba(138, 100, 180, 0.35);
 }
 
-.vn-qa-overlay-content {
+.vn-overlay-content.vn-qa-overlay-content {
   max-width: 1120px;
+  overflow-y: auto;
 }
 
 .vn-qa-hint {
@@ -1337,16 +1339,16 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  min-height: 0;
-  flex: 1;
-  overflow: hidden;
+  min-height: auto;
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
 .vn-qa-log-section {
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  flex: 1;
+  min-height: clamp(180px, 27.5vh, 340px);
+  flex: 0 0 auto;
   overflow: hidden;
   border: 1px solid rgba(138, 100, 180, 0.28);
   border-radius: var(--radius);
@@ -1360,7 +1362,21 @@ textarea {
   color: var(--accent);
 }
 
+.vn-qa-log-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .vn-log-toggle-btn {
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+
+.vn-summary-btn {
   border-radius: 999px;
   padding: 8px 14px;
   font-size: 0.85rem;
@@ -1368,7 +1384,7 @@ textarea {
 
 .vn-qa-log {
   margin: 12px 0 0;
-  max-height: 100%;
+  max-height: none;
   min-height: 0;
 }
 
@@ -1380,6 +1396,39 @@ textarea {
 
 .vn-qa-form .quick-option-row {
   margin-bottom: 2px;
+}
+
+.conversation-summary-panel {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(138, 100, 180, 0.35);
+  border-radius: var(--radius);
+  background: rgba(18, 15, 28, 0.72);
+}
+
+.conversation-summary-panel h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--gold);
+}
+
+.conversation-summary-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.conversation-summary-list {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.conversation-summary-list li {
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 /* Overlays */
@@ -1454,8 +1503,9 @@ textarea {
 }
 
 .vn-qa-log.full-height {
-    flex-basis: 80vh;
-    min-height: min(80vh, 100%);
+    flex-basis: auto;
+    min-height: clamp(140px, 23vh, 280px);
+    max-height: clamp(220px, 42vh, 420px);
 }
 
 .vn-guess-grid {
@@ -1548,11 +1598,25 @@ textarea {
         gap: 10px;
         align-items: stretch;
     }
+    .vn-qa-log-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .vn-summary-btn,
     .vn-log-toggle-btn {
         width: 100%;
     }
     .vn-qa-form {
         padding-top: 12px;
+    }
+    .vn-qa-log-section {
+        min-height: clamp(140px, 24vh, 230px);
+    }
+    .vn-qa-log.full-height {
+        min-height: clamp(110px, 19vh, 180px);
+        max-height: clamp(180px, 34vh, 280px);
     }
     .vn-briefing-text {
         font-size: 0.96rem;

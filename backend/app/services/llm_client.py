@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import random
@@ -11,7 +12,7 @@ from typing import Any
 from google import genai
 from google.genai import errors as genai_errors
 from google.genai import types as genai_types
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..config import Settings
 from ..enums import LanguageMode
@@ -20,7 +21,9 @@ from .follow_up import append_follow_up_block, heuristic_follow_up_questions
 from .local_case_factory import build_local_case
 from .prompts import (
     build_answer_prompt,
+    build_background_prompt,
     build_case_generation_prompt,
+    build_conversation_summary_prompt,
     build_contradiction_prompt,
     build_scoring_prompt,
 )
@@ -32,6 +35,12 @@ RETRIABLE_GEMINI_STATUS_CODES = {408, 429, 500, 502, 503, 504}
 
 class LLMError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class GeneratedImage:
+    data: bytes
+    mime_type: str
 
 
 class LLMClient:
@@ -66,6 +75,23 @@ class LLMClient:
         language_mode: LanguageMode,
     ) -> dict | None:
         raise NotImplementedError
+
+    def summarize_conversation(
+        self,
+        *,
+        case_data: CaseFile,
+        history: list[dict[str, str]],
+        language_mode: LanguageMode,
+    ) -> dict:
+        raise NotImplementedError
+
+    def generate_background_image(
+        self,
+        *,
+        case_data: CaseFile,
+        language_mode: LanguageMode,
+    ) -> GeneratedImage | None:
+        return None
 
 
 class FakeLLMClient(LLMClient):
@@ -225,6 +251,54 @@ class FakeLLMClient(LLMClient):
     ) -> dict | None:
         return None
 
+    def summarize_conversation(
+        self,
+        *,
+        case_data: CaseFile,
+        history: list[dict[str, str]],
+        language_mode: LanguageMode,
+    ) -> dict:
+        if language_mode == LanguageMode.EN:
+            unknown = "unknown from conversation"
+            no_history = "No conversation yet."
+        else:
+            unknown = "会話からは不明"
+            no_history = "まだ会話ログがありません。"
+
+        if not history:
+            return {
+                "killer": unknown,
+                "method": unknown,
+                "motive": unknown,
+                "trick": unknown,
+                "highlights": [no_history],
+            }
+
+        def pick_line(*keywords: str) -> str:
+            for row in reversed(history):
+                for key in ("answer", "question"):
+                    text = row.get(key, "")
+                    lower = text.lower()
+                    if any(word in lower for word in keywords):
+                        return text.strip()
+            return unknown
+
+        killer = pick_line("killer", "culprit", "犯人", "容疑者", "アリバイ", "witness")
+        method = pick_line("method", "weapon", "poison", "手口", "凶器", "方法")
+        motive = pick_line("motive", "reason", "revenge", "動機", "理由", "恨み")
+        trick = pick_line("trick", "locked", "staged", "トリック", "密室", "偽装")
+
+        latest_answer = history[-1].get("answer", "").strip()
+        highlights = [latest_answer] if latest_answer else [no_history]
+
+        return {
+            "killer": killer,
+            "method": method,
+            "motive": motive,
+            "trick": trick,
+            "highlights": highlights,
+        }
+
 
 @dataclass
 class FallbackLLMClient(LLMClient):
@@ -307,6 +381,53 @@ class FallbackLLMClient(LLMClient):
                 language_mode=language_mode,
             )
 
+    def summarize_conversation(
+        self,
+        *,
+        case_data: CaseFile,
+        history: list[dict[str, str]],
+        language_mode: LanguageMode,
+    ) -> dict:
+        try:
+            return self.primary.summarize_conversation(
+                case_data=case_data,
+                history=history,
+                language_mode=language_mode,
+            )
+        except (LLMError, ValueError) as exc:
+            logger.warning("Primary LLM failed in summarize_conversation. Falling back to fake provider: %s", exc)
+            return self.fallback.summarize_conversation(
+                case_data=case_data,
+                history=history,
+                language_mode=language_mode,
+            )
+
+    def generate_background_image(
+        self,
+        *,
+        case_data: CaseFile,
+        language_mode: LanguageMode,
+    ) -> GeneratedImage | None:
+        try:
+            return self.primary.generate_background_image(
+                case_data=case_data,
+                language_mode=language_mode,
+            )
+        except (LLMError, ValueError) as exc:
+            logger.warning("Primary LLM failed in generate_background_image. Falling back to fake provider: %s", exc)
+            return self.fallback.generate_background_image(
+                case_data=case_data,
+                language_mode=language_mode,
+            )
+
+
+class ConversationSummaryModel(BaseModel):
+    killer: str
+    method: str
+    motive: str
+    trick: str
+    highlights: list[str] = Field(default_factory=list)
+
 
 @dataclass
 class GeminiLLMClient(LLMClient):
@@ -376,6 +497,53 @@ class GeminiLLMClient(LLMClient):
         if block_reason:
             raise LLMError(f"Gemini response blocked by safety filter: {block_reason}")
         raise LLMError("Gemini returned empty text")
+
+    @staticmethod
+    def _iter_response_parts(response: Any) -> list[Any]:
+        direct_parts = getattr(response, "parts", None)
+        if isinstance(direct_parts, list) and direct_parts:
+            return direct_parts
+
+        parts: list[Any] = []
+        candidates = getattr(response, "candidates", None) or []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            candidate_parts = getattr(content, "parts", None) or []
+            parts.extend(candidate_parts)
+        return parts
+
+    def _extract_generated_image(self, response: Any) -> GeneratedImage:
+        for part in self._iter_response_parts(response):
+            inline_data = getattr(part, "inline_data", None)
+            if inline_data is None:
+                continue
+
+            raw_data = getattr(inline_data, "data", None)
+            if isinstance(raw_data, bytes):
+                data = raw_data
+            elif isinstance(raw_data, str):
+                try:
+                    data = base64.b64decode(raw_data)
+                except ValueError as exc:
+                    raise LLMError("Gemini image data is not valid base64") from exc
+            else:
+                continue
+
+            if not data:
+                continue
+
+            mime_type = getattr(inline_data, "mime_type", None)
+            if not isinstance(mime_type, str) or not mime_type.strip():
+                mime_type = "image/png"
+            return GeneratedImage(data=data, mime_type=mime_type)
+
+        try:
+            text_hint = self._extract_response_text(response)
+        except LLMError:
+            text_hint = ""
+        if text_hint:
+            raise LLMError(f"Gemini image response did not include image data: {text_hint}")
+        raise LLMError("Gemini image response did not include image data")
 
     def _build_thinking_config(self) -> genai_types.ThinkingConfig | None:
         thinking_budget = self.settings.gemini_thinking_budget
@@ -488,6 +656,66 @@ class GeminiLLMClient(LLMClient):
                 time.sleep(delay_sec)
         raise LLMError("; ".join(errors))
 
+    def _request_background_image(self, *, prompt: str) -> GeneratedImage:
+        config = genai_types.GenerateContentConfig(
+            temperature=0.7,
+            response_modalities=["IMAGE"],
+            image_config=genai_types.ImageConfig(aspect_ratio=self.settings.gemini_background_aspect_ratio),
+        )
+        response = self._get_client().models.generate_content(
+            model=self.settings.gemini_image_model,
+            contents=prompt,
+            config=config,
+        )
+        return self._extract_generated_image(response)
+
+    def _request_background_image_with_retry(self, *, prompt: str) -> GeneratedImage:
+        errors: list[str] = []
+        max_attempts = max(1, self.settings.gemini_max_attempts)
+        for attempt in range(max_attempts):
+            try:
+                return self._request_background_image(prompt=prompt)
+            except genai_errors.APIError as exc:
+                errors.append(self._format_api_error(exc))
+                if attempt >= max_attempts - 1 or not self._should_retry(exc):
+                    break
+                delay_sec = self._next_delay_sec(attempt)
+                logger.warning(
+                    "Gemini image request failed with retriable error (attempt %s/%s): %s. Sleeping %.2fs.",
+                    attempt + 1,
+                    max_attempts,
+                    self._format_api_error(exc),
+                    delay_sec,
+                )
+                time.sleep(delay_sec)
+            except LLMError as exc:
+                errors.append(str(exc))
+                if attempt >= max_attempts - 1:
+                    break
+                delay_sec = self._next_delay_sec(attempt)
+                logger.warning(
+                    "Gemini image response handling failed (attempt %s/%s): %s. Sleeping %.2fs.",
+                    attempt + 1,
+                    max_attempts,
+                    exc,
+                    delay_sec,
+                )
+                time.sleep(delay_sec)
+            except Exception as exc:  # pragma: no cover - defensive guard
+                errors.append(f"{type(exc).__name__}: {exc}")
+                if attempt >= max_attempts - 1:
+                    break
+                delay_sec = self._next_delay_sec(attempt)
+                logger.warning(
+                    "Unexpected Gemini image request error (attempt %s/%s): %s. Sleeping %.2fs.",
+                    attempt + 1,
+                    max_attempts,
+                    exc,
+                    delay_sec,
+                )
+                time.sleep(delay_sec)
+        raise LLMError("; ".join(errors))
+
     def generate_case(self, language_mode: LanguageMode) -> dict:
         prompt = build_case_generation_prompt(language_mode)
         raw = self._request_with_retry(
@@ -540,6 +768,33 @@ class GeminiLLMClient(LLMClient):
         prompt = build_scoring_prompt(case_data=case_data, guess=guess, language_mode=language_mode)
         raw = self._request_with_retry(prompt=prompt, response_mime_type="application/json")
         return self._extract_json(raw)
+
+    def summarize_conversation(
+        self,
+        *,
+        case_data: CaseFile,
+        history: list[dict[str, str]],
+        language_mode: LanguageMode,
+    ) -> dict:
+        prompt = build_conversation_summary_prompt(
+            history=history,
+            language_mode=language_mode,
+        )
+        raw = self._request_with_retry(
+            prompt=prompt,
+            response_mime_type="application/json",
+            response_schema=ConversationSummaryModel,
+        )
+        return self._extract_json(raw)
+
+    def generate_background_image(
+        self,
+        *,
+        case_data: CaseFile,
+        language_mode: LanguageMode,
+    ) -> GeneratedImage | None:
+        prompt = build_background_prompt(case_data=case_data, language_mode=language_mode)
+        return self._request_background_image_with_retry(prompt=prompt)
 
 
 def build_llm_client(settings: Settings) -> LLMClient:

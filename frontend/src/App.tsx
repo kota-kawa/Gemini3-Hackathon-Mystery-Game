@@ -120,6 +120,7 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState('');
   const [uiMode, setUiMode] = useState<UiMode>('dialogue');
   const [showBriefing, setShowBriefing] = useState(false);
+  const [isGuessFinalized, setIsGuessFinalized] = useState(false);
 
   const text = useMemo(() => t(languageMode), [languageMode]);
   const questionTemplates = useMemo(() => questionTemplatesFor(languageMode), [languageMode]);
@@ -164,6 +165,7 @@ export default function App() {
       setTarget('');
       setReasoningStyle('evidence');
       setGuessForm({ ...emptyGuess, killer: state.characters[0]?.name ?? '' });
+      setIsGuessFinalized(false);
       setUiMode('dialogue');
       setShowBriefing(true);
       setScreen('game');
@@ -191,7 +193,7 @@ export default function App() {
 
   const handleAsk = async (event: FormEvent) => {
     event.preventDefault();
-    if (!gameId || !question.trim() || showBriefing) {
+    if (!gameId || !question.trim() || showBriefing || isGuessFinalized || gameState?.status !== 'PLAYING') {
       return;
     }
 
@@ -211,17 +213,26 @@ export default function App() {
     }
   };
 
-  const handleMoveToGuess = async () => {
-    if (!gameId || showBriefing) {
+  const handleOpenGuess = () => {
+    if (showBriefing) {
+      return;
+    }
+    setUiMode('guessing');
+  };
+
+  const handleFinalizeGuess = async () => {
+    if (!gameId || isGuessFinalized) {
       return;
     }
     setLoading(true);
     setErrorMessage('');
     try {
-      await readyToGuess(gameId);
+      if (gameState?.status === 'PLAYING') {
+        await readyToGuess(gameId);
+      }
+      setIsGuessFinalized(true);
       const refreshed = await getGame(gameId);
       setGameState(refreshed);
-      setUiMode('guessing');
     } catch (error) {
       setErrorMessage(resolveError(error));
     } finally {
@@ -231,7 +242,7 @@ export default function App() {
 
   const handleSubmitGuess = async (event: FormEvent) => {
     event.preventDefault();
-    if (!gameId) {
+    if (!gameId || !isGuessFinalized) {
       return;
     }
     setLoading(true);
@@ -272,6 +283,7 @@ export default function App() {
     setTarget('');
     setReasoningStyle('evidence');
     setGuessForm({ ...emptyGuess });
+    setIsGuessFinalized(false);
     setShowBriefing(false);
     setUiMode('dialogue');
     setScreen('title');
@@ -560,7 +572,7 @@ export default function App() {
                 <button
                   className="vn-menu-btn"
                   onClick={() => setUiMode('input')}
-                  disabled={showBriefing || uiMode === 'guessing' || uiMode === 'input'}
+                  disabled={showBriefing || isGuessing || uiMode === 'guessing' || uiMode === 'input'}
                 >
                     {text.menuAsk}
                 </button>
@@ -572,7 +584,7 @@ export default function App() {
                 </button>
                 <button
                   className="vn-menu-btn warning"
-                  onClick={handleMoveToGuess}
+                  onClick={handleOpenGuess}
                   disabled={showBriefing || uiMode === 'guessing'}
                 >
                     {text.menuGuess}
@@ -648,9 +660,18 @@ export default function App() {
             {uiMode === 'guessing' && (
                 <div className="vn-overlay guessing-overlay">
                     <div className="vn-overlay-content">
-                        <p className="notice">{text.stateGuessing}</p>
+                        <div className="row-between">
+                          <h2>{text.guessTitle}</h2>
+                          {gameState.status === 'PLAYING' && !isGuessFinalized && (
+                            <button className="secondary-btn" type="button" onClick={() => setUiMode('dialogue')}>
+                              {text.backToInvestigation}
+                            </button>
+                          )}
+                        </div>
+                        {gameState.status === 'GUESSING' && <p className="notice">{text.stateGuessing}</p>}
+                        {!isGuessFinalized && <p className="form-helper">{text.guessDraftHint}</p>}
+                        {isGuessFinalized && <p className="notice guess-lock-warning">{text.guessLockedWarning}</p>}
                         <form className="guess-form" onSubmit={handleSubmitGuess}>
-                        <h3>{text.guessTitle}</h3>
                         <p className="form-helper">{text.guessHelp}</p>
                         <div className="vn-guess-grid">
                             <div>
@@ -661,6 +682,7 @@ export default function App() {
                                     id="killer-select"
                                     value={guessForm.killer}
                                     onChange={(event) => setGuessForm({ ...guessForm, killer: event.target.value })}
+                                    disabled={isGuessFinalized}
                                     required
                                 >
                                     {gameState.characters.map((character) => (
@@ -678,6 +700,7 @@ export default function App() {
                                     id="motive-select"
                                     value={guessForm.motive}
                                     onChange={(event) => setGuessForm({ ...guessForm, motive: event.target.value })}
+                                    disabled={isGuessFinalized}
                                     required
                                 >
                                     <option value="">{text.selectMotive}</option>
@@ -696,6 +719,7 @@ export default function App() {
                                     id="method-select"
                                     value={guessForm.method}
                                     onChange={(event) => setGuessForm({ ...guessForm, method: event.target.value })}
+                                    disabled={isGuessFinalized}
                                     required
                                 >
                                     <option value="">{text.selectMethod}</option>
@@ -714,6 +738,7 @@ export default function App() {
                                     id="trick-select"
                                     value={guessForm.trick}
                                     onChange={(event) => setGuessForm({ ...guessForm, trick: event.target.value })}
+                                    disabled={isGuessFinalized}
                                     required
                                 >
                                     <option value="">{text.selectTrick}</option>
@@ -733,6 +758,7 @@ export default function App() {
                             id="reasoning-style-select"
                             value={reasoningStyle}
                             onChange={(event) => setReasoningStyle(event.target.value as ReasoningStyle)}
+                            disabled={isGuessFinalized}
                         >
                             <option value="evidence">{text.reasoningStyleEvidence}</option>
                             <option value="timeline">{text.reasoningStyleTimeline}</option>
@@ -743,7 +769,7 @@ export default function App() {
                             className="secondary-btn"
                             type="button"
                             onClick={handleAutofillReasoning}
-                            disabled={!guessForm.killer || !guessForm.motive || !guessForm.method || !guessForm.trick}
+                            disabled={isGuessFinalized || !guessForm.killer || !guessForm.motive || !guessForm.method || !guessForm.trick}
                         >
                             {text.autoFillReasoning}
                         </button>
@@ -756,11 +782,17 @@ export default function App() {
                             placeholder={text.reasoningPlaceholder}
                             value={guessForm.reasoning}
                             onChange={(event) => setGuessForm({ ...guessForm, reasoning: event.target.value })}
+                            disabled={isGuessFinalized}
                             required
                         />
-                        <button className="primary-btn" type="submit">
-                            {text.submitGuess}
-                        </button>
+                        <div className="guess-action-row">
+                            <button className="secondary-btn" type="button" onClick={handleFinalizeGuess} disabled={isGuessFinalized}>
+                              {isGuessFinalized ? text.finalDecisionDone : text.finalDecision}
+                            </button>
+                            <button className="primary-btn" type="submit" disabled={!isGuessFinalized}>
+                                {text.submitGuess}
+                            </button>
+                        </div>
                         </form>
                     </div>
                 </div>

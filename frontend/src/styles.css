@@ -860,6 +860,22 @@ textarea {
   color: var(--accent);
 }
 
+.guess-action-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+  position: sticky;
+  bottom: 0;
+  padding-top: 12px;
+  background: linear-gradient(180deg, rgba(30, 26, 42, 0), rgba(30, 26, 42, 0.96) 35%);
+}
+
+.guess-lock-warning {
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
 @media (max-width: 980px) {
   .hero {
     flex-direction: column;
@@ -905,6 +921,10 @@ textarea {
 
   .novel-topbar-right {
     justify-content: space-between;
+  }
+
+  .guess-action-row {
+    flex-direction: column;
   }
 
   .story-flow {
@@ -1125,15 +1145,15 @@ textarea {
   width: 90%;
   max-width: 1000px;
   margin: 0 auto 30px;
-  background: rgba(255, 255, 255, 0.92); /* Light theme as per reference image */
-  color: #333; /* Dark text for light background */
+  background: linear-gradient(160deg, rgba(26, 23, 37, 0.95), rgba(16, 14, 24, 0.95));
+  color: var(--text);
   border-radius: 24px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   padding: 0;
   display: flex;
   flex-direction: column;
   overflow: visible;
-  border: 4px solid white;
+  border: 2px solid rgba(138, 100, 180, 0.35);
 }
 
 .vn-dialogue-content {
@@ -1145,15 +1165,15 @@ textarea {
   position: absolute;
   top: -20px;
   left: 40px;
-  background: #4fb3d6; /* Light Blue from image */
-  color: white;
+  background: linear-gradient(135deg, #7b61aa, #5f4a88);
+  color: #f4f1fb;
   padding: 6px 32px;
   border-radius: 30px;
   font-size: 1.1rem;
   font-weight: 700;
   margin: 0;
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-  border: 2px solid white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .vn-dialogue-text {
@@ -1161,7 +1181,8 @@ textarea {
   line-height: 1.6;
   margin-top: 10px;
   font-weight: 700;
-  color: #4a4a4a;
+  color: rgba(232, 228, 240, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   font-family: 'Zen Maru Gothic', sans-serif;
 }
 
@@ -1176,12 +1197,12 @@ textarea {
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: 0.03em;
-  color: #2c93b0;
+  color: var(--gold);
 }
 
 .vn-briefing-section {
-  background: #f7fbff;
-  border: 1px solid #d2e8f2;
+  background: rgba(31, 27, 44, 0.86);
+  border: 1px solid rgba(138, 100, 180, 0.3);
   border-radius: 14px;
   padding: 12px 14px;
 }
@@ -1190,7 +1211,7 @@ textarea {
   margin: 0;
   font-size: 0.9rem;
   font-weight: 800;
-  color: #2c93b0;
+  color: var(--accent);
 }
 
 .vn-briefing-text {
@@ -1198,7 +1219,7 @@ textarea {
   font-size: 1.05rem;
   line-height: 1.7;
   font-weight: 700;
-  color: #4a4a4a;
+  color: rgba(232, 228, 240, 0.95);
 }
 
 .vn-briefing-btn {
@@ -1212,13 +1233,14 @@ textarea {
   justify-content: flex-end;
   padding: 12px 24px;
   gap: 12px;
-  border-top: 1px solid rgba(0,0,0,0.05);
+  border-top: 1px solid rgba(138, 100, 180, 0.25);
+  background: rgba(12, 10, 18, 0.38);
 }
 
 .vn-menu-btn {
-  background: white;
-  border: 2px solid #a0d8ef;
-  color: #5a8a9f;
+  background: rgba(34, 29, 48, 0.92);
+  border: 1px solid rgba(138, 100, 180, 0.35);
+  color: rgba(232, 228, 240, 0.95);
   padding: 8px 20px;
   border-radius: 20px;
   font-weight: 700;
@@ -1230,9 +1252,9 @@ textarea {
 }
 
 .vn-menu-btn:hover {
-  background: #f0f9ff;
-  border-color: #4fb3d6;
-  color: #2c93b0;
+  background: rgba(52, 44, 74, 0.95);
+  border-color: rgba(149, 117, 205, 0.7);
+  color: #f7f4ff;
   transform: translateY(-2px);
 }
 
@@ -1240,23 +1262,24 @@ textarea {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
-  background: #f5f5f5;
-  border-color: #ddd;
-  color: #aaa;
+  background: rgba(28, 24, 39, 0.7);
+  border-color: rgba(138, 100, 180, 0.2);
+  color: rgba(201, 193, 219, 0.5);
 }
 
 .vn-menu-btn.warning {
-  border-color: #ffb0b0;
-  color: #d06060;
+  border-color: rgba(207, 102, 121, 0.55);
+  color: #efb3bf;
 }
 
 .vn-menu-btn.warning:hover {
-  background: #fff0f0;
-  border-color: #ff8080;
+  background: rgba(98, 40, 56, 0.45);
+  border-color: rgba(207, 102, 121, 0.8);
 }
 
 .vn-input-form {
   padding: 32px 40px;
+  background: rgba(10, 9, 16, 0.3);
 }
 
 .vn-input-row {
@@ -1267,23 +1290,23 @@ textarea {
 
 .vn-input-field {
   flex: 1;
-  background: white;
-  color: #333;
-  border: 2px solid #ddd;
+  background: rgba(23, 20, 34, 0.95);
+  color: rgba(232, 228, 240, 0.95);
+  border: 1px solid rgba(138, 100, 180, 0.35);
   font-size: 1.1rem;
 }
 
 .vn-input-field:focus {
-    border-color: #4fb3d6;
-    box-shadow: 0 0 0 3px rgba(79, 179, 214, 0.2);
+    border-color: rgba(149, 117, 205, 0.85);
+    box-shadow: 0 0 0 3px rgba(149, 117, 205, 0.24);
 }
 
 .vn-target-select {
   width: auto;
   min-width: 160px;
-  background: white;
-  color: #333;
-  border: 2px solid #ddd;
+  background: rgba(23, 20, 34, 0.95);
+  color: rgba(232, 228, 240, 0.95);
+  border: 1px solid rgba(138, 100, 180, 0.35);
 }
 
 .vn-ask-btn {
@@ -1294,8 +1317,9 @@ textarea {
 .vn-cancel-btn {
   margin-top: 12px;
   border-radius: 20px;
-  background: #eee;
-  color: #666;
+  background: rgba(38, 33, 52, 0.92);
+  color: rgba(232, 228, 240, 0.95);
+  border: 1px solid rgba(138, 100, 180, 0.35);
 }
 
 /* Overlays */
@@ -1322,6 +1346,10 @@ textarea {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.guessing-overlay .vn-overlay-content {
+  overflow-y: auto;
 }
 
 .vn-notebook-grid {
@@ -1367,16 +1395,16 @@ textarea {
     z-index: 200;
 }
 
-/* Chip buttons in light theme textbox */
+/* Chip buttons in VN textbox */
 .vn-textbox .chip-btn {
-    background: #f0f0f5;
-    color: #555;
-    border: 1px solid #ddd;
+    background: rgba(35, 30, 49, 0.9);
+    color: rgba(232, 228, 240, 0.95);
+    border: 1px solid rgba(138, 100, 180, 0.3);
 }
 .vn-textbox .chip-btn:hover {
-    background: #e0e6ff;
-    border-color: #a0d8ef;
-    color: #2c93b0;
+    background: rgba(56, 47, 78, 0.95);
+    border-color: rgba(149, 117, 205, 0.65);
+    color: #f7f4ff;
 }
 
 /* Adjustments for mobile */

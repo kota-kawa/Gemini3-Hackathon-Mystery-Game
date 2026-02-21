@@ -27,7 +27,6 @@ export interface UnlockedEvidence {
 export interface Message {
   id: number;
   question: string;
-  target?: string | null;
   answer_text: string;
   language_mode: LanguageMode;
   created_at: string;

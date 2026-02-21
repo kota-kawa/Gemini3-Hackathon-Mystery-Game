@@ -83,16 +83,12 @@ class GameService:
 
         case_obj = self._case_of_game(game)
 
-        history = [
-            {"question": message.question, "answer": message.answer_text, "target": message.target}
-            for message in game.messages
-        ]
+        history = [{"question": message.question, "answer": message.answer_text} for message in game.messages]
 
         try:
             answer = self.llm_client.answer_question(
                 case_data=case_obj,
                 question=request.question,
-                target=request.target,
                 history=history,
                 language_mode=LanguageMode(game.language_mode),
             )
@@ -129,7 +125,6 @@ class GameService:
         message = Message(
             game_id=game.id,
             question=request.question,
-            target=request.target,
             answer_text=answer,
             language_mode=game.language_mode,
         )

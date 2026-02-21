@@ -149,7 +149,6 @@ class NewGameResponse(BaseModel):
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=500)
-    target: str | None = Field(default=None, max_length=64)
 
 
 class UnlockedEvidenceResponse(BaseModel):
@@ -203,7 +202,6 @@ class PatchLanguageResponse(BaseModel):
 class MessageResponse(BaseModel):
     id: int
     question: str
-    target: str | None
     answer_text: str
     language_mode: LanguageMode
     created_at: datetime

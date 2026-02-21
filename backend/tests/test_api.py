@@ -64,7 +64,7 @@ def test_full_flow_with_language_switch(client: TestClient) -> None:
 
     ask_res = client.post(
         f"/api/game/{game_id}/ask",
-        json={"question": "Show me one clue", "target": "overall"},
+        json={"question": "Show me one clue"},
     )
     assert ask_res.status_code == 200
     ask_data = ask_res.json()
@@ -108,6 +108,23 @@ def test_ask_invalid_state_returns_409(client: TestClient) -> None:
 
     assert ask_res.status_code == 409
     assert ask_res.json()["error_code"] == "INVALID_STATE"
+
+
+def test_ask_character_info_without_target_field(client: TestClient) -> None:
+    create_res = client.post("/api/game/new", json={"language_mode": "ja"})
+    assert create_res.status_code == 201
+    game_id = create_res.json()["game_id"]
+
+    state_res = client.get(f"/api/game/{game_id}")
+    assert state_res.status_code == 200
+    character_name = state_res.json()["characters"][0]["name"]
+
+    ask_res = client.post(
+        f"/api/game/{game_id}/ask",
+        json={"question": f"{character_name}のアリバイを教えて"},
+    )
+    assert ask_res.status_code == 200
+    assert character_name in ask_res.json()["answer_text"]
 
 
 def test_guess_invalid_state_returns_409(client: TestClient) -> None:
@@ -169,7 +186,7 @@ def test_ask_succeeds_when_contradiction_check_fails(client: TestClient) -> None
 
     ask_res = client.post(
         f"/api/game/{game_id}/ask",
-        json={"question": "手掛かりは?", "target": "overall"},
+        json={"question": "手掛かりは?"},
     )
     assert ask_res.status_code == 200
     assert "停電の空白時間" in ask_res.json()["answer_text"]
@@ -197,7 +214,7 @@ def test_gemini_provider_falls_back_to_fake(client: TestClient, monkeypatch: pyt
 
     ask_res = client.post(
         f"/api/game/{game_id}/ask",
-        json={"question": "証拠を1つ教えて", "target": "overall"},
+        json={"question": "証拠を1つ教えて"},
     )
     assert ask_res.status_code == 200
     assert isinstance(ask_res.json()["answer_text"], str)

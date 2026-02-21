@@ -1307,14 +1307,6 @@ textarea {
     box-shadow: 0 0 0 3px rgba(149, 117, 205, 0.24);
 }
 
-.vn-target-select {
-  width: auto;
-  min-width: 160px;
-  background: rgba(23, 20, 34, 0.95);
-  color: rgba(232, 228, 240, 0.95);
-  border: 1px solid rgba(138, 100, 180, 0.35);
-}
-
 .vn-ask-btn {
   padding: 10px 32px;
   border-radius: 20px;

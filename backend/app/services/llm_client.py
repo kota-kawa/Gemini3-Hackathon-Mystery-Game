@@ -42,7 +42,6 @@ class LLMClient:
         *,
         case_data: CaseFile,
         question: str,
-        target: str | None,
         history: list[dict],
         language_mode: LanguageMode,
     ) -> str:
@@ -77,30 +76,41 @@ class FakeLLMClient(LLMClient):
         *,
         case_data: CaseFile,
         question: str,
-        target: str | None,
         history: list[dict],
         language_mode: LanguageMode,
     ) -> str:
         q = question.lower()
         killer = next(c for c in case_data.characters if c.id == case_data.killer_id)
-        liar = next(c for c in case_data.characters if c.id == case_data.liar_id)
+        mentioned_character = next(
+            (character for character in case_data.characters if character.name.lower() in q),
+            None,
+        )
 
         if language_mode == LanguageMode.EN:
             unclear = "Could you narrow it down to person, timeline, or evidence?"
             spoiler_block = "I cannot reveal the final answer yet, but I can share clues."
             if any(x in q for x in ["killer", "who did it", "solution"]):
                 return spoiler_block
+            if mentioned_character is not None:
+                if mentioned_character.is_liar:
+                    lied_before = any(
+                        mentioned_character.name in row.get("answer", "") and "10:12" in row.get("answer", "")
+                        for row in history
+                    )
+                    if not lied_before:
+                        return f"According to {mentioned_character.name}, they saw the victim speaking at 10:12 near the corridor."
+                    return f"{mentioned_character.name} now claims they mostly stayed near the elevator hall during the blackout."
+                trait = mentioned_character.traits[0] if mentioned_character.traits else "No notable trait recorded."
+                return (
+                    f"{mentioned_character.name}'s stated alibi is: {mentioned_character.alibi} "
+                    f"Their role is {mentioned_character.role}, and a noted trait is: {trait}"
+                )
             if any(x in q for x in ["evidence", "proof", "clue"]):
                 first = case_data.evidence[min(len(history), len(case_data.evidence) - 1)]
                 return f"One clue is '{first.name}'. {first.detail} It matters because {first.relevance}"
             if any(x in q for x in ["timeline", "time", "when"]):
                 event = case_data.timeline[min(len(history), len(case_data.timeline) - 1)]
                 return f"At {event.time}, {event.event}"
-            if target and target.lower() in {liar.id.lower(), liar.name.lower()}:
-                lied_before = any(liar.name in row.get("answer", "") and "10:12" in row.get("answer", "") for row in history)
-                if not lied_before:
-                    return f"{liar.name} says they saw the victim speaking at 10:12 near the corridor."
-                return f"{liar.name} now claims they mostly stayed near the elevator hall during the blackout."
             if any(x in q for x in ["motive", "why"]):
                 return "The motive likely ties to hidden financial pressure and a silence attempt."
             if any(x in q for x in ["method", "how"]):
@@ -115,17 +125,26 @@ class FakeLLMClient(LLMClient):
         spoiler_block = "真相の断定はまだできませんが、手掛かりは共有できます。"
         if any(x in q for x in ["犯人", "真相", "答え"]):
             return spoiler_block
+        if mentioned_character is not None:
+            if mentioned_character.is_liar:
+                lied_before = any(
+                    mentioned_character.name in row.get("answer", "") and "10:12" in row.get("answer", "")
+                    for row in history
+                )
+                if not lied_before:
+                    return f"{mentioned_character.name}の証言では、被害者は10:12ごろ廊下で話していたそうです。"
+                return f"{mentioned_character.name}は、停電中はほぼエレベーターホールにいたと言っています。"
+            trait = mentioned_character.traits[0] if mentioned_character.traits else "特筆すべき特徴は記録されていません。"
+            return (
+                f"{mentioned_character.name}のアリバイ主張は「{mentioned_character.alibi}」です。"
+                f"役割は{mentioned_character.role}で、特徴としては「{trait}」が挙げられます。"
+            )
         if any(x in q for x in ["証拠", "手掛かり", "手がかり"]):
             first = case_data.evidence[min(len(history), len(case_data.evidence) - 1)]
             return f"手掛かりは『{first.name}』です。{first.detail} 重要性は、{first.relevance}"
         if any(x in q for x in ["時系列", "時間", "いつ"]):
             event = case_data.timeline[min(len(history), len(case_data.timeline) - 1)]
             return f"{event.time}の時点で、{event.event}"
-        if target and target.lower() in {liar.id.lower(), liar.name.lower()}:
-            lied_before = any(liar.name in row.get("answer", "") and "10:12" in row.get("answer", "") for row in history)
-            if not lied_before:
-                return f"{liar.name}の証言では、被害者は10:12ごろ廊下で話していたそうです。"
-            return f"{liar.name}は、停電中はほぼエレベーターホールにいたと言っています。"
         if any(x in q for x in ["動機", "なぜ"]):
             return "動機は金銭面の圧力と、発覚回避の線が濃いです。"
         if any(x in q for x in ["手口", "方法", "どうやって"]):
@@ -190,7 +209,6 @@ class FallbackLLMClient(LLMClient):
         *,
         case_data: CaseFile,
         question: str,
-        target: str | None,
         history: list[dict],
         language_mode: LanguageMode,
     ) -> str:
@@ -198,7 +216,6 @@ class FallbackLLMClient(LLMClient):
             return self.primary.answer_question(
                 case_data=case_data,
                 question=question,
-                target=target,
                 history=history,
                 language_mode=language_mode,
             )
@@ -207,7 +224,6 @@ class FallbackLLMClient(LLMClient):
             return self.fallback.answer_question(
                 case_data=case_data,
                 question=question,
-                target=target,
                 history=history,
                 language_mode=language_mode,
             )
@@ -452,14 +468,12 @@ class GeminiLLMClient(LLMClient):
         *,
         case_data: CaseFile,
         question: str,
-        target: str | None,
         history: list[dict],
         language_mode: LanguageMode,
     ) -> str:
         prompt = build_answer_prompt(
             case_data=case_data,
             question=question,
-            target=target,
             history=history,
             language_mode=language_mode,
         )

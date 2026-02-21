@@ -137,7 +137,6 @@ export default function App() {
   const [result, setResult] = useState<GuessResponse | null>(null);
   const [question, setQuestion] = useState('');
   const [selectedQuestionTemplate, setSelectedQuestionTemplate] = useState('');
-  const [target, setTarget] = useState('');
   const [guessForm, setGuessForm] = useState<GuessForm>(emptyGuess);
   const [reasoningStyle, setReasoningStyle] = useState<ReasoningStyle>('evidence');
   const [memo, setMemo] = useState('');
@@ -187,7 +186,6 @@ export default function App() {
       setResult(null);
       setQuestion('');
       setSelectedQuestionTemplate('');
-      setTarget('');
       setReasoningStyle('evidence');
       setGuessForm({ ...emptyGuess, killer: state.characters[0]?.name ?? '' });
       setUiMode('dialogue');
@@ -225,7 +223,7 @@ export default function App() {
     setLoading(true);
     setErrorMessage('');
     try {
-      await askQuestion(gameId, question.trim(), target.trim() || undefined);
+      await askQuestion(gameId, question.trim());
       const refreshed = await getGame(gameId);
       setGameState(refreshed);
       setQuestion('');
@@ -292,7 +290,6 @@ export default function App() {
     setResult(null);
     setQuestion('');
     setSelectedQuestionTemplate('');
-    setTarget('');
     setReasoningStyle('evidence');
     setGuessForm({ ...emptyGuess });
     setShowBriefing(false);
@@ -619,14 +616,6 @@ export default function App() {
                         onChange={(event) => setQuestion(event.target.value)}
                         autoFocus
                       />
-                      <select className="vn-target-select" value={target} onChange={(event) => setTarget(event.target.value)}>
-                        <option value="">{text.askTargetAnyone}</option>
-                        {gameState.characters.map((character) => (
-                          <option value={character.name} key={character.id}>
-                            {character.name}
-                          </option>
-                        ))}
-                      </select>
                       <button className="primary-btn vn-ask-btn" type="submit" disabled={loading || !question.trim()}>
                         {text.askButton}
                       </button>

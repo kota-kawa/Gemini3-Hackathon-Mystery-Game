@@ -57,10 +57,10 @@ export function getGame(gameId: string): Promise<GameStateResponse> {
   return apiFetch(`/api/game/${gameId}`, { method: 'GET' });
 }
 
-export function askQuestion(gameId: string, question: string, target?: string): Promise<AskResponse> {
+export function askQuestion(gameId: string, question: string): Promise<AskResponse> {
   return apiFetch(`/api/game/${gameId}/ask`, {
     method: 'POST',
-    body: JSON.stringify({ question, target: target || null }),
+    body: JSON.stringify({ question }),
   });
 }
 

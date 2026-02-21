@@ -411,7 +411,7 @@ export default function App() {
           </section>
 
           {errorMessage && <div className="error-box">{errorMessage}</div>}
-          {loading && <div className="loading">{text.loading}</div>}
+          {loading && <div className="loading system-message">{text.loading}</div>}
 
           <section className="story-flow story-flow-title" aria-label={text.navLabel}>
             {storyFlow.map((label, index) => (
@@ -478,7 +478,7 @@ export default function App() {
       )}
 
       {screen === 'game' && errorMessage && <div className="error-box vn-error">{errorMessage}</div>}
-      {screen === 'game' && loading && <div className="loading vn-loading">{text.loading}</div>}
+      {screen === 'game' && loading && <div className="loading system-message vn-loading">{text.loading}</div>}
 
       {screen === 'game' && gameState && (
         <div className="vn-container">
@@ -594,7 +594,7 @@ export default function App() {
                     </div>
                     {isQaLogExpanded && (
                       <div className="chat-log full-height vn-qa-log">
-                        {gameState.messages.length === 0 && <p className="empty-log">{text.noMessages}</p>}
+                        {gameState.messages.length === 0 && <p className="empty-log system-message">{text.noMessages}</p>}
                         {gameState.messages.map((message) => (
                           <article key={message.id} className="chat-item">
                             <p className="chat-q">
@@ -672,7 +672,9 @@ export default function App() {
                         </div>
                         <div className="vn-col">
                             <h3>{text.evidenceTitle}</h3>
-                            {gameState.unlocked_evidence.length === 0 && <p className="empty-evidence">{text.noEvidence}</p>}
+                            {gameState.unlocked_evidence.length === 0 && (
+                              <p className="empty-evidence system-message">{text.noEvidence}</p>
+                            )}
                             <ul className="evidence-list">
                                 {gameState.unlocked_evidence.map((evidence) => (
                                 <li key={evidence.id} className="evidence-item">
@@ -707,7 +709,7 @@ export default function App() {
                             </button>
                           )}
                         </div>
-                        {gameState.status === 'GUESSING' && <p className="notice">{text.stateGuessing}</p>}
+                        {gameState.status === 'GUESSING' && <p className="notice system-message">{text.stateGuessing}</p>}
                         <p className="form-helper">{text.guessDraftHint}</p>
                         <form className="guess-form" onSubmit={handleSubmitGuess}>
                         <p className="form-helper">{text.guessHelp}</p>

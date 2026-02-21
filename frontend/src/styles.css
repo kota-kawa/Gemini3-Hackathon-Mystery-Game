@@ -569,14 +569,8 @@ h2 {
 }
 
 .empty-log {
-  color: var(--muted);
-  background: rgba(30, 26, 42, 0.7);
-  border: 1px dashed var(--panel-border);
-  border-radius: var(--radius);
-  padding: 20px;
   margin: 0;
   text-align: center;
-  font-style: italic;
 }
 
 /* Novel game style dialogue box */
@@ -758,13 +752,17 @@ textarea {
 }
 
 .notice {
-  color: var(--warning);
-  font-weight: 700;
-  padding: 12px 16px;
-  background: rgba(207, 102, 121, 0.15);
-  border-radius: var(--radius);
-  border-left: 4px solid var(--warning);
   margin: 12px 0;
+}
+
+.system-message {
+  color: #65e58d;
+  font-weight: 700;
+  padding: 14px 18px;
+  background: #122218;
+  border: 2px solid #2f9d53;
+  border-radius: var(--radius);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.58);
 }
 
 .language-toggle {
@@ -787,11 +785,6 @@ textarea {
 
 .loading {
   margin-bottom: 12px;
-  color: var(--accent);
-  font-weight: 700;
-  padding: 14px 18px;
-  background: var(--accent-soft);
-  border-radius: var(--radius);
   text-align: center;
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -1021,13 +1014,8 @@ textarea {
 }
 
 .empty-evidence {
-  color: var(--muted);
-  font-style: italic;
-  padding: 16px;
-  background: rgba(30, 26, 42, 0.5);
-  border-radius: var(--radius);
+  margin: 0;
   text-align: center;
-  border: 1px dashed var(--panel-border);
 }
 
 /* Result panel match list */
@@ -1481,10 +1469,6 @@ textarea {
     z-index: 200;
     width: min(90vw, 440px);
     margin: 0;
-    color: #65e58d;
-    background: #122218;
-    border: 2px solid #2f9d53;
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.58);
     animation: none;
     opacity: 1;
 }

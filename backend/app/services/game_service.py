@@ -150,6 +150,13 @@ class GameService:
                     history_count=len(history),
                 )
 
+        if not self._answer_has_named_actor(answer=answer, case_obj=case_obj):
+            answer = self._build_explicit_actor_answer(
+                case_obj=case_obj,
+                question=request.question,
+                language_mode=language_mode,
+            )
+
         game.remaining_questions = max(0, game.remaining_questions - 1)
         if game.remaining_questions == 0:
             game.status = GameStatus.GUESSING.value
@@ -345,6 +352,56 @@ class GameService:
             name=evidence.name,
             detail=evidence.detail,
             relevance=evidence.relevance,
+        )
+
+    @staticmethod
+    def _answer_has_named_actor(*, answer: str, case_obj: CaseFile) -> bool:
+        return any(character.name in answer for character in case_obj.characters)
+
+    @staticmethod
+    def _build_explicit_actor_answer(
+        *,
+        case_obj: CaseFile,
+        question: str,
+        language_mode: LanguageMode,
+    ) -> str:
+        first = case_obj.characters[0]
+        second = case_obj.characters[1]
+        third = case_obj.characters[2]
+        first_event = case_obj.timeline[0]
+        first_evidence = case_obj.evidence[0]
+        q = question.lower()
+
+        if language_mode == LanguageMode.EN:
+            if any(k in q for k in ["where", "alibi", "at the time", "when"]):
+                return (
+                    f"{first.name} says: {first.alibi} "
+                    f"{second.name} says: {second.alibi}"
+                )
+            if any(k in q for k in ["evidence", "clue", "proof"]):
+                return (
+                    f"For evidence '{first_evidence.name}', compare {first.name}'s account "
+                    f"('{first.alibi}') with {second.name}'s account ('{second.alibi}')."
+                )
+            return (
+                f"At {first_event.time}, {first_event.event} "
+                f"{first.name} says: {first.alibi} "
+                f"{third.name} says: {third.alibi}"
+            )
+
+        if any(k in question for k in ["どこ", "アリバイ", "当時", "いつ"]):
+            return (
+                f"{first.name}は「{first.alibi}」と証言しています。"
+                f"{second.name}は「{second.alibi}」と証言しています。"
+            )
+        if any(k in question for k in ["証拠", "手掛かり", "手がかり"]):
+            return (
+                f"証拠「{first_evidence.name}」の確認では、{first.name}の行動「{first.alibi}」と"
+                f"{second.name}の行動「{second.alibi}」を照合してください。"
+            )
+        return (
+            f"{first_event.time}の時点では{first_event.event}。"
+            f"{first.name}は「{first.alibi}」、{third.name}は「{third.alibi}」と証言しています。"
         )
 
     @staticmethod

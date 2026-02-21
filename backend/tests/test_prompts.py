@@ -41,6 +41,8 @@ def test_answer_prompt_includes_current_date_line() -> None:
     assert "Current date and weekday: 2026-02-21 (Saturday)." in prompt
     assert "<FOLLOW_UP_QUESTIONS>" in prompt
     assert "</FOLLOW_UP_QUESTIONS>" in prompt
+    assert "Never answer in first person" in prompt
+    assert "Always make actor and action explicit" in prompt
 
 
 def test_contradiction_and_scoring_prompts_include_current_date_line() -> None:

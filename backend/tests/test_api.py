@@ -131,6 +131,25 @@ def test_ask_character_info_without_target_field(client: TestClient) -> None:
     assert len(ask_res.json()["follow_up_questions"]) == 3
 
 
+def test_ask_where_were_you_answer_has_explicit_actor_name(client: TestClient) -> None:
+    create_res = client.post("/api/game/new", json={"language_mode": "ja"})
+    assert create_res.status_code == 201
+    game_id = create_res.json()["game_id"]
+
+    state_res = client.get(f"/api/game/{game_id}")
+    assert state_res.status_code == 200
+    names = [character["name"] for character in state_res.json()["characters"]]
+
+    ask_res = client.post(
+        f"/api/game/{game_id}/ask",
+        json={"question": "事件当時、あなたはどこにいた？"},
+    )
+    assert ask_res.status_code == 200
+    answer_text = ask_res.json()["answer_text"]
+    assert any(name in answer_text for name in names)
+    assert "私は" not in answer_text
+
+
 def test_guess_invalid_state_returns_409(client: TestClient) -> None:
     create_res = client.post("/api/game/new", json={"language_mode": "ja"})
     game_id = create_res.json()["game_id"]

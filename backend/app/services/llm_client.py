@@ -105,6 +105,13 @@ class FakeLLMClient(LLMClient):
             spoiler_block = "I cannot reveal the final answer yet, but I can share clues."
             if any(x in q for x in ["killer", "who did it", "solution"]):
                 return with_followups(spoiler_block)
+            if any(x in q for x in ["where were you", "where were you at", "your alibi", "where were"]):
+                first = case_data.characters[0]
+                second = case_data.characters[1]
+                return with_followups(
+                    f"{first.name} says: {first.alibi} "
+                    f"{second.name} says: {second.alibi}"
+                )
             if mentioned_character is not None:
                 if mentioned_character.is_liar:
                     lied_before = any(
@@ -145,6 +152,13 @@ class FakeLLMClient(LLMClient):
         spoiler_block = "真相の断定はまだできませんが、手掛かりは共有できます。"
         if any(x in q for x in ["犯人", "真相", "答え"]):
             return with_followups(spoiler_block)
+        if any(x in question for x in ["どこにいた", "どこに居た", "当時", "アリバイ", "居場所"]):
+            first = case_data.characters[0]
+            second = case_data.characters[1]
+            return with_followups(
+                f"{first.name}は「{first.alibi}」と証言しています。"
+                f"{second.name}は「{second.alibi}」と証言しています。"
+            )
         if mentioned_character is not None:
             if mentioned_character.is_liar:
                 lied_before = any(

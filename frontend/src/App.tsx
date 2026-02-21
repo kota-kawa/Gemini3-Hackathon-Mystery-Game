@@ -215,7 +215,7 @@ export default function App() {
     <div className="app-shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">AI GM MYSTERY</p>
+          <p className="eyebrow">Mystery Visual Novel</p>
           <h1>{text.appTitle}</h1>
           <p className="subtitle">{text.subtitle}</p>
         </div>
@@ -224,8 +224,8 @@ export default function App() {
           value={languageMode}
           onChange={(event) => handleLanguageChange(event.target.value as LanguageMode)}
         >
-          <option value="ja">日本語</option>
-          <option value="en">English</option>
+          <option value="ja">🇯🇵 日本語</option>
+          <option value="en">🇺🇸 English</option>
         </select>
       </header>
 
@@ -303,8 +303,8 @@ export default function App() {
               {gameState.messages.length === 0 && <p className="empty-log">{text.noMessages}</p>}
               {gameState.messages.map((message) => (
                 <article key={message.id} className="chat-item">
-                  <p className="chat-q">Q: {message.question}</p>
-                  <p className="chat-a">A: {message.answer_text}</p>
+                  <p className="chat-q">💭 {message.question}</p>
+                  <p className="chat-a">💬 {message.answer_text}</p>
                 </article>
               ))}
             </div>
@@ -335,7 +335,7 @@ export default function App() {
               </button>
             )}
 
-            {isGuessing && <p className="notice">{text.stateGuessing}</p>}
+            {isGuessing && <p className="notice">💝 {text.stateGuessing}</p>}
 
             {isGuessing && (
               <form className="guess-form" id="deduction" onSubmit={handleSubmitGuess}>
@@ -386,27 +386,28 @@ export default function App() {
             <h2>{text.caseTitle}</h2>
             <p>{gameState.case_summary.summary}</p>
             <p>
-              {gameState.case_summary.location} / {gameState.case_summary.time_window}
+              📍 {gameState.case_summary.location} / ⏰ {gameState.case_summary.time_window}
             </p>
             <p>
-              {gameState.case_summary.victim_name} - {gameState.case_summary.found_state}
+              👤 {gameState.case_summary.victim_name} - {gameState.case_summary.found_state}
             </p>
 
             <h3>{text.charactersTitle}</h3>
-            <ul>
+            <ul className="character-list">
               {gameState.characters.map((character) => (
-                <li key={character.id}>
-                  <strong>{character.name}</strong> ({character.role})
+                <li key={character.id} className="character-item">
+                  <strong>🎭 {character.name}</strong>
+                  <span className="character-role">（{character.role}）</span>
                 </li>
               ))}
             </ul>
 
             <h3>{text.evidenceTitle}</h3>
-            {gameState.unlocked_evidence.length === 0 && <p>{text.noEvidence}</p>}
-            <ul>
+            {gameState.unlocked_evidence.length === 0 && <p className="empty-evidence">{text.noEvidence}</p>}
+            <ul className="evidence-list">
               {gameState.unlocked_evidence.map((evidence) => (
-                <li key={evidence.id}>
-                  <strong>{evidence.name}</strong>
+                <li key={evidence.id} className="evidence-item">
+                  <strong>🔍 {evidence.name}</strong>
                   <p>{evidence.detail}</p>
                 </li>
               ))}
@@ -430,22 +431,22 @@ export default function App() {
             {text.score}: <strong>{result.score}</strong>
           </p>
           <p>
-            {text.grade}: <strong>{result.grade}</strong>
+            {text.grade}: <strong className="grade-display">{result.grade}</strong>
           </p>
 
           <h3>{text.matchTitle}</h3>
-          <ul>
+          <ul className="match-list">
             <li>
-              {text.killer}: {result.matches.killer ? 'OK' : 'NG'}
+              {text.killer}: {result.matches.killer ? '✅' : '❌'}
             </li>
             <li>
-              {text.motive}: {result.matches.motive ? 'OK' : 'NG'}
+              {text.motive}: {result.matches.motive ? '✅' : '❌'}
             </li>
             <li>
-              {text.method}: {result.matches.method ? 'OK' : 'NG'}
+              {text.method}: {result.matches.method ? '✅' : '❌'}
             </li>
             <li>
-              {text.trick}: {result.matches.trick ? 'OK' : 'NG'}
+              {text.trick}: {result.matches.trick ? '✅' : '❌'}
             </li>
           </ul>
 
@@ -454,21 +455,21 @@ export default function App() {
 
           <h3>{text.contradictions}</h3>
           <ul>
-            {result.contradictions.length === 0 && <li>-</li>}
+            {result.contradictions.length === 0 && <li>なし ✨</li>}
             {result.contradictions.map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ul>
 
           <h3>{text.weaknesses}</h3>
-          <ol>
+          <ol className="weakness-list">
             {result.weaknesses_top3.map((line) => (
               <li key={line}>{line}</li>
             ))}
           </ol>
 
           <h3>{text.solution}</h3>
-          <p>{result.solution_summary}</p>
+          <p className="solution-text">{result.solution_summary}</p>
 
           <button className="primary-btn" onClick={handlePlayAgain}>
             {text.playAgain}

@@ -15,6 +15,7 @@ import type { GameStateResponse, GuessResponse, LanguageMode } from './types';
 
 type Screen = 'title' | 'game' | 'result';
 type ReasoningStyle = 'evidence' | 'timeline' | 'elimination';
+type UiMode = 'dialogue' | 'input' | 'log' | 'notebook' | 'guessing';
 
 interface GuessForm {
   killer: string;
@@ -117,6 +118,7 @@ export default function App() {
   const [memo, setMemo] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [uiMode, setUiMode] = useState<UiMode>('dialogue');
 
   const text = useMemo(() => t(languageMode), [languageMode]);
   const questionTemplates = useMemo(() => questionTemplatesFor(languageMode), [languageMode]);
@@ -137,6 +139,14 @@ export default function App() {
     }
     localStorage.setItem(memoKey(gameId), memo);
   }, [gameId, memo]);
+
+  useEffect(() => {
+    if (gameState?.status === 'GUESSING') {
+      setUiMode('guessing');
+    } else if (screen === 'game') {
+      setUiMode('dialogue');
+    }
+  }, [gameState?.status, screen]);
 
   const handleStartGame = async () => {
     setLoading(true);
@@ -190,6 +200,7 @@ export default function App() {
       setGameState(refreshed);
       setQuestion('');
       setSelectedQuestionTemplate('');
+      setUiMode('dialogue');
     } catch (error) {
       setErrorMessage(resolveError(error));
     } finally {
@@ -207,6 +218,7 @@ export default function App() {
       await readyToGuess(gameId);
       const refreshed = await getGame(gameId);
       setGameState(refreshed);
+      setUiMode('guessing');
     } catch (error) {
       setErrorMessage(resolveError(error));
     } finally {
@@ -304,6 +316,14 @@ export default function App() {
 
   const storyFlow = [text.navStart, text.navGame, text.navGuess, text.navResult];
 
+  // Helper to get latest message content
+  const latestMessage = useMemo(() => {
+    if (!gameState || gameState.messages.length === 0) {
+      return null;
+    }
+    return gameState.messages[gameState.messages.length - 1];
+  }, [gameState]);
+
   return (
     <div className={`app-shell ${isImmersive ? 'app-shell-immersive' : ''}`}>
       {screen === 'title' && (
@@ -351,7 +371,7 @@ export default function App() {
         </>
       )}
 
-      {isImmersive && (
+      {isImmersive && screen !== 'game' && (
         <>
           <header className="novel-topbar">
             <div>
@@ -360,11 +380,6 @@ export default function App() {
               <p className="subtitle">{text.subtitle}</p>
             </div>
             <div className="novel-topbar-right">
-              {screen === 'game' && gameState && (
-                <span className="badge">
-                  {text.remainingQuestions}: {gameState.remaining_questions}
-                </span>
-              )}
               <select
                 className="language-toggle"
                 value={languageMode}
@@ -393,331 +408,348 @@ export default function App() {
             <p>{currentTask.main}</p>
             {currentTask.sub && <p className="guide-sub">{currentTask.sub}</p>}
           </section>
+        </>
+      )}
 
-          {errorMessage && <div className="error-box">{errorMessage}</div>}
-          {loading && <div className="loading">{text.loading}</div>}
+      {screen === 'game' && errorMessage && <div className="error-box vn-error">{errorMessage}</div>}
+      {screen === 'game' && loading && <div className="loading vn-loading">{text.loading}</div>}
 
-          {screen === 'game' && gameState && (
-            <>
-              <main className="novel-layout">
-                <section className="panel novel-main-panel">
-                  <div className="row-between">
-                    <h2>{text.chatTitle}</h2>
-                    <span className="badge">
-                      {text.remainingQuestions}: {gameState.remaining_questions}
-                    </span>
-                  </div>
+      {screen === 'game' && gameState && (
+        <div className="vn-container">
+          {/* Top Left Badge */}
+          <div className="vn-date-badge">
+            <span className="vn-date-text">{gameState.case_summary.time_window.split(' ')[0]}</span>
+            <span className="vn-location-text">{gameState.case_summary.location}</span>
+          </div>
 
-                  <p className="scene-headline">
-                    {gameState.case_summary.location} / {gameState.case_summary.time_window}
+          <div className="vn-top-right">
+             <span className="badge">
+               {text.remainingQuestions}: {gameState.remaining_questions}
+             </span>
+             <select
+                className="language-toggle"
+                value={languageMode}
+                onChange={(event) => handleLanguageChange(event.target.value as LanguageMode)}
+              >
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="en">🇺🇸 English</option>
+              </select>
+          </div>
+
+          {/* Dialogue Box Area */}
+          <div className="vn-textbox">
+            {uiMode === 'dialogue' && (
+               <div className="vn-dialogue-content">
+                  <h3 className="vn-speaker-name">Game Master</h3>
+                  <p className="vn-dialogue-text">
+                    {latestMessage ? latestMessage.answer_text : gameState.case_summary.summary}
                   </p>
-                  <p className="scene-description">{gameState.case_summary.summary}</p>
+               </div>
+            )}
 
-                  <div className="chat-log">
-                    {gameState.messages.length === 0 && <p className="empty-log">{text.noMessages}</p>}
-                    {gameState.messages.map((message) => (
-                      <article key={message.id} className="chat-item">
-                        <p className="chat-q">Q: {message.question}</p>
-                        <p className="chat-a">A: {message.answer_text}</p>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-
-                <aside className="panel side-panel novel-clue-panel">
-                  <h2>{text.caseTitle}</h2>
-                  <p>
-                    {gameState.case_summary.victim_name} - {gameState.case_summary.found_state}
-                  </p>
-                  <p>
-                    {gameState.case_summary.location} / {gameState.case_summary.time_window}
-                  </p>
-
-                  <h3>{text.charactersTitle}</h3>
-                  <ul className="character-list">
-                    {gameState.characters.map((character) => (
-                      <li key={character.id} className="character-item">
-                        <strong>{character.name}</strong>
-                        <span className="character-role">（{character.role}）</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <h3>{text.evidenceTitle}</h3>
-                  {gameState.unlocked_evidence.length === 0 && <p className="empty-evidence">{text.noEvidence}</p>}
-                  <ul className="evidence-list">
-                    {gameState.unlocked_evidence.map((evidence) => (
-                      <li key={evidence.id} className="evidence-item">
-                        <strong>{evidence.name}</strong>
-                        <p>{evidence.detail}</p>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <h3>{text.memoTitle}</h3>
-                  <textarea
-                    className="memo"
-                    placeholder={text.memoPlaceholder}
-                    value={memo}
-                    onChange={(event) => setMemo(event.target.value)}
-                  />
-                </aside>
-              </main>
-
-              <section className="panel novel-action-panel">
-                {gameState.status === 'PLAYING' && (
-                  <>
-                    <h3>{text.taskAsk}</h3>
-                    <form className="ask-form" onSubmit={handleAsk}>
-                      <label className="field-label" htmlFor="question-template-select">
-                        {text.questionTemplateLabel}
-                      </label>
-                      <select
-                        id="question-template-select"
-                        value={selectedQuestionTemplate}
-                        onChange={(event) => {
-                          const template = event.target.value;
-                          setSelectedQuestionTemplate(template);
-                          if (template) {
-                            setQuestion(template);
-                          }
-                        }}
-                        disabled={gameState.status !== 'PLAYING'}
-                      >
-                        <option value="">{text.selectQuestionTemplate}</option>
-                        {questionTemplates.map((template) => (
-                          <option value={template} key={template}>
-                            {template}
-                          </option>
-                        ))}
-                      </select>
-
-                      <p className="field-label">{text.quickQuestionLabel}</p>
-                      <div className="quick-option-row" aria-label={text.quickQuestionLabel}>
-                        {questionTemplates.slice(0, 4).map((template) => (
-                          <button
-                            type="button"
-                            key={template}
-                            className="chip-btn"
-                            onClick={() => {
-                              setSelectedQuestionTemplate(template);
-                              setQuestion(template);
-                            }}
-                            disabled={gameState.status !== 'PLAYING'}
-                          >
-                            {template}
-                          </button>
-                        ))}
-                      </div>
-
-                      <label className="field-label" htmlFor="question-input">
-                        {text.manualQuestionLabel}
-                      </label>
-                      <input
-                        id="question-input"
+            {uiMode === 'input' && (
+              <form className="vn-input-form" onSubmit={handleAsk}>
+                <div className="vn-input-row">
+                    <input
                         type="text"
+                        className="vn-input-field"
                         placeholder={text.askPlaceholder}
                         value={question}
                         onChange={(event) => setQuestion(event.target.value)}
-                        disabled={gameState.status !== 'PLAYING'}
-                      />
-
-                      <label className="field-label" htmlFor="target-select">
-                        {text.askTargetLabel}
-                      </label>
-                      <select
-                        id="target-select"
+                        autoFocus
+                    />
+                    <select
+                        className="vn-target-select"
                         value={target}
                         onChange={(event) => setTarget(event.target.value)}
-                        disabled={gameState.status !== 'PLAYING'}
-                      >
+                    >
                         <option value="">{text.askTargetAnyone}</option>
                         {gameState.characters.map((character) => (
                           <option value={character.name} key={character.id}>
                             {character.name}
                           </option>
                         ))}
-                      </select>
-
-                      <button className="primary-btn" type="submit" disabled={gameState.status !== 'PLAYING'}>
+                    </select>
+                    <button className="primary-btn vn-ask-btn" type="submit">
                         {text.askButton}
-                      </button>
-                    </form>
-
-                    <button className="secondary-btn action-next-btn" onClick={handleMoveToGuess}>
-                      {text.toGuess}
                     </button>
-                  </>
-                )}
-
-                {isGuessing && (
-                  <>
-                    <p className="notice">{text.stateGuessing}</p>
-                    <form className="guess-form" onSubmit={handleSubmitGuess}>
-                      <h3>{text.guessTitle}</h3>
-                      <p className="form-helper">{text.guessHelp}</p>
-                      <label className="field-label" htmlFor="killer-select">
-                        {text.killer}
-                      </label>
-                      <select
-                        id="killer-select"
-                        value={guessForm.killer}
-                        onChange={(event) => setGuessForm({ ...guessForm, killer: event.target.value })}
-                        required
-                      >
-                        {gameState.characters.map((character) => (
-                          <option value={character.name} key={character.id}>
-                            {character.name}
-                          </option>
-                        ))}
-                      </select>
-
-                      <label className="field-label" htmlFor="motive-select">
-                        {text.motive}
-                      </label>
-                      <select
-                        id="motive-select"
-                        value={guessForm.motive}
-                        onChange={(event) => setGuessForm({ ...guessForm, motive: event.target.value })}
-                        required
-                      >
-                        <option value="">{text.selectMotive}</option>
-                        {guessChoiceOptions.motive.map((option) => (
-                          <option value={option} key={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-
-                      <label className="field-label" htmlFor="method-select">
-                        {text.method}
-                      </label>
-                      <select
-                        id="method-select"
-                        value={guessForm.method}
-                        onChange={(event) => setGuessForm({ ...guessForm, method: event.target.value })}
-                        required
-                      >
-                        <option value="">{text.selectMethod}</option>
-                        {guessChoiceOptions.method.map((option) => (
-                          <option value={option} key={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-
-                      <label className="field-label" htmlFor="trick-select">
-                        {text.trick}
-                      </label>
-                      <select
-                        id="trick-select"
-                        value={guessForm.trick}
-                        onChange={(event) => setGuessForm({ ...guessForm, trick: event.target.value })}
-                        required
-                      >
-                        <option value="">{text.selectTrick}</option>
-                        {guessChoiceOptions.trick.map((option) => (
-                          <option value={option} key={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-
-                      <label className="field-label" htmlFor="reasoning-style-select">
-                        {text.reasoningStyle}
-                      </label>
-                      <select
-                        id="reasoning-style-select"
-                        value={reasoningStyle}
-                        onChange={(event) => setReasoningStyle(event.target.value as ReasoningStyle)}
-                      >
-                        <option value="evidence">{text.reasoningStyleEvidence}</option>
-                        <option value="timeline">{text.reasoningStyleTimeline}</option>
-                        <option value="elimination">{text.reasoningStyleElimination}</option>
-                      </select>
-
-                      <button
-                        className="secondary-btn"
+                </div>
+                <div className="quick-option-row">
+                    {questionTemplates.slice(0, 3).map((template) => (
+                        <button
                         type="button"
-                        onClick={handleAutofillReasoning}
-                        disabled={!guessForm.killer || !guessForm.motive || !guessForm.method || !guessForm.trick}
-                      >
-                        {text.autoFillReasoning}
-                      </button>
+                        key={template}
+                        className="chip-btn"
+                        onClick={() => {
+                            setQuestion(template);
+                        }}
+                        >
+                        {template}
+                        </button>
+                    ))}
+                </div>
+                <button type="button" className="secondary-btn vn-cancel-btn" onClick={() => setUiMode('dialogue')}>
+                    Cancel
+                </button>
+              </form>
+            )}
 
-                      <label className="field-label" htmlFor="reasoning-input">
-                        {text.reasoning}
-                      </label>
-                      <textarea
-                        id="reasoning-input"
-                        placeholder={text.reasoningPlaceholder}
-                        value={guessForm.reasoning}
-                        onChange={(event) => setGuessForm({ ...guessForm, reasoning: event.target.value })}
-                        required
-                      />
-                      <button className="primary-btn" type="submit">
-                        {text.submitGuess}
-                      </button>
-                    </form>
-                  </>
-                )}
-              </section>
-            </>
+            {/* Menu Bar */}
+            <div className="vn-menu-bar">
+                <button className="vn-menu-btn" onClick={() => setUiMode('input')} disabled={uiMode === 'guessing' || uiMode === 'input'}>
+                    Ask
+                </button>
+                <button className="vn-menu-btn" onClick={() => setUiMode('log')} disabled={uiMode === 'guessing'}>
+                    Log
+                </button>
+                <button className="vn-menu-btn" onClick={() => setUiMode('notebook')} disabled={uiMode === 'guessing'}>
+                    Notebook
+                </button>
+                <button className="vn-menu-btn warning" onClick={handleMoveToGuess} disabled={uiMode === 'guessing'}>
+                    Guess
+                </button>
+            </div>
+          </div>
+
+          {/* Overlays */}
+          {uiMode === 'log' && (
+            <div className="vn-overlay">
+                <div className="vn-overlay-content">
+                    <div className="row-between">
+                        <h2>{text.chatTitle}</h2>
+                        <button className="secondary-btn" onClick={() => setUiMode('dialogue')}>Close</button>
+                    </div>
+                    <div className="chat-log full-height">
+                        {gameState.messages.map((message) => (
+                          <article key={message.id} className="chat-item">
+                            <p className="chat-q">Q: {message.question}</p>
+                            <p className="chat-a">A: {message.answer_text}</p>
+                          </article>
+                        ))}
+                    </div>
+                </div>
+            </div>
           )}
 
-          {screen === 'result' && result && (
-            <main className="panel result-panel novel-result-panel">
-              <h2>{text.resultTitle}</h2>
-              <p>
-                {text.score}: <strong>{result.score}</strong>
-              </p>
-              <p>
-                {text.grade}: <strong className="grade-display">{result.grade}</strong>
-              </p>
-
-              <h3>{text.matchTitle}</h3>
-              <ul className="match-list">
-                <li>
-                  {text.killer}: {result.matches.killer ? '✅' : '❌'}
-                </li>
-                <li>
-                  {text.motive}: {result.matches.motive ? '✅' : '❌'}
-                </li>
-                <li>
-                  {text.method}: {result.matches.method ? '✅' : '❌'}
-                </li>
-                <li>
-                  {text.trick}: {result.matches.trick ? '✅' : '❌'}
-                </li>
-              </ul>
-
-              <h3>{text.feedback}</h3>
-              <p>{result.feedback}</p>
-
-              <h3>{text.contradictions}</h3>
-              <ul>
-                {result.contradictions.length === 0 && <li>{languageMode === 'ja' ? 'なし' : 'None'}</li>}
-                {result.contradictions.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-
-              <h3>{text.weaknesses}</h3>
-              <ol className="weakness-list">
-                {result.weaknesses_top3.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ol>
-
-              <h3>{text.solution}</h3>
-              <p className="solution-text">{result.solution_summary}</p>
-
-              <button className="primary-btn" onClick={handlePlayAgain}>
-                {text.playAgain}
-              </button>
-            </main>
+          {uiMode === 'notebook' && (
+            <div className="vn-overlay">
+                <div className="vn-overlay-content">
+                    <div className="row-between">
+                        <h2>{text.caseTitle}</h2>
+                        <button className="secondary-btn" onClick={() => setUiMode('dialogue')}>Close</button>
+                    </div>
+                    <div className="vn-notebook-grid">
+                        <div className="vn-col">
+                            <h3>{text.charactersTitle}</h3>
+                            <ul className="character-list">
+                                {gameState.characters.map((character) => (
+                                <li key={character.id} className="character-item">
+                                    <strong>{character.name}</strong>
+                                    <span className="character-role">（{character.role}）</span>
+                                </li>
+                                ))}
+                            </ul>
+                        </div>
+                        <div className="vn-col">
+                            <h3>{text.evidenceTitle}</h3>
+                            {gameState.unlocked_evidence.length === 0 && <p className="empty-evidence">{text.noEvidence}</p>}
+                            <ul className="evidence-list">
+                                {gameState.unlocked_evidence.map((evidence) => (
+                                <li key={evidence.id} className="evidence-item">
+                                    <strong>{evidence.name}</strong>
+                                    <p>{evidence.detail}</p>
+                                </li>
+                                ))}
+                            </ul>
+                        </div>
+                        <div className="vn-col">
+                            <h3>{text.memoTitle}</h3>
+                            <textarea
+                                className="memo"
+                                placeholder={text.memoPlaceholder}
+                                value={memo}
+                                onChange={(event) => setMemo(event.target.value)}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
           )}
-        </>
+
+            {uiMode === 'guessing' && (
+                <div className="vn-overlay guessing-overlay">
+                    <div className="vn-overlay-content">
+                        <p className="notice">{text.stateGuessing}</p>
+                        <form className="guess-form" onSubmit={handleSubmitGuess}>
+                        <h3>{text.guessTitle}</h3>
+                        <p className="form-helper">{text.guessHelp}</p>
+                        <div className="vn-guess-grid">
+                            <div>
+                                <label className="field-label" htmlFor="killer-select">
+                                    {text.killer}
+                                </label>
+                                <select
+                                    id="killer-select"
+                                    value={guessForm.killer}
+                                    onChange={(event) => setGuessForm({ ...guessForm, killer: event.target.value })}
+                                    required
+                                >
+                                    {gameState.characters.map((character) => (
+                                    <option value={character.name} key={character.id}>
+                                        {character.name}
+                                    </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="field-label" htmlFor="motive-select">
+                                    {text.motive}
+                                </label>
+                                <select
+                                    id="motive-select"
+                                    value={guessForm.motive}
+                                    onChange={(event) => setGuessForm({ ...guessForm, motive: event.target.value })}
+                                    required
+                                >
+                                    <option value="">{text.selectMotive}</option>
+                                    {guessChoiceOptions.motive.map((option) => (
+                                    <option value={option} key={option}>
+                                        {option}
+                                    </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="field-label" htmlFor="method-select">
+                                    {text.method}
+                                </label>
+                                <select
+                                    id="method-select"
+                                    value={guessForm.method}
+                                    onChange={(event) => setGuessForm({ ...guessForm, method: event.target.value })}
+                                    required
+                                >
+                                    <option value="">{text.selectMethod}</option>
+                                    {guessChoiceOptions.method.map((option) => (
+                                    <option value={option} key={option}>
+                                        {option}
+                                    </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="field-label" htmlFor="trick-select">
+                                    {text.trick}
+                                </label>
+                                <select
+                                    id="trick-select"
+                                    value={guessForm.trick}
+                                    onChange={(event) => setGuessForm({ ...guessForm, trick: event.target.value })}
+                                    required
+                                >
+                                    <option value="">{text.selectTrick}</option>
+                                    {guessChoiceOptions.trick.map((option) => (
+                                    <option value={option} key={option}>
+                                        {option}
+                                    </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <label className="field-label" htmlFor="reasoning-style-select">
+                            {text.reasoningStyle}
+                        </label>
+                        <select
+                            id="reasoning-style-select"
+                            value={reasoningStyle}
+                            onChange={(event) => setReasoningStyle(event.target.value as ReasoningStyle)}
+                        >
+                            <option value="evidence">{text.reasoningStyleEvidence}</option>
+                            <option value="timeline">{text.reasoningStyleTimeline}</option>
+                            <option value="elimination">{text.reasoningStyleElimination}</option>
+                        </select>
+
+                        <button
+                            className="secondary-btn"
+                            type="button"
+                            onClick={handleAutofillReasoning}
+                            disabled={!guessForm.killer || !guessForm.motive || !guessForm.method || !guessForm.trick}
+                        >
+                            {text.autoFillReasoning}
+                        </button>
+
+                        <label className="field-label" htmlFor="reasoning-input">
+                            {text.reasoning}
+                        </label>
+                        <textarea
+                            id="reasoning-input"
+                            placeholder={text.reasoningPlaceholder}
+                            value={guessForm.reasoning}
+                            onChange={(event) => setGuessForm({ ...guessForm, reasoning: event.target.value })}
+                            required
+                        />
+                        <button className="primary-btn" type="submit">
+                            {text.submitGuess}
+                        </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+      )}
+
+      {screen === 'result' && result && (
+        <main className="panel result-panel novel-result-panel">
+          <h2>{text.resultTitle}</h2>
+          <p>
+            {text.score}: <strong>{result.score}</strong>
+          </p>
+          <p>
+            {text.grade}: <strong className="grade-display">{result.grade}</strong>
+          </p>
+
+          <h3>{text.matchTitle}</h3>
+          <ul className="match-list">
+            <li>
+              {text.killer}: {result.matches.killer ? '✅' : '❌'}
+            </li>
+            <li>
+              {text.motive}: {result.matches.motive ? '✅' : '❌'}
+            </li>
+            <li>
+              {text.method}: {result.matches.method ? '✅' : '❌'}
+            </li>
+            <li>
+              {text.trick}: {result.matches.trick ? '✅' : '❌'}
+            </li>
+          </ul>
+
+          <h3>{text.feedback}</h3>
+          <p>{result.feedback}</p>
+
+          <h3>{text.contradictions}</h3>
+          <ul>
+            {result.contradictions.length === 0 && <li>{languageMode === 'ja' ? 'なし' : 'None'}</li>}
+            {result.contradictions.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+
+          <h3>{text.weaknesses}</h3>
+          <ol className="weakness-list">
+            {result.weaknesses_top3.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ol>
+
+          <h3>{text.solution}</h3>
+          <p className="solution-text">{result.solution_summary}</p>
+
+          <button className="primary-btn" onClick={handlePlayAgain}>
+            {text.playAgain}
+          </button>
+        </main>
       )}
     </div>
   );

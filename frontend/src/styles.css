@@ -960,3 +960,315 @@ textarea {
   max-width: 600px;
   margin: 16px auto !important;
 }
+
+/* Visual Novel Layout Styles */
+
+.vn-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: none; /* Let clicks pass through to background if needed, but mainly for layering */
+  background-image: url('./assets/images/game-background.png');
+  background-size: cover;
+  background-position: center;
+  z-index: 50;
+}
+
+.vn-container > * {
+  pointer-events: auto;
+}
+
+.vn-date-badge {
+  position: absolute;
+  top: 24px;
+  left: 0;
+  background: linear-gradient(90deg, #2c93b0, #206a80); /* Blue-ish teal */
+  color: white;
+  padding: 8px 24px 8px 16px;
+  border-radius: 0 50px 50px 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'Zen Maru Gothic', sans-serif;
+  z-index: 10;
+}
+
+.vn-date-text {
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: 0.05em;
+}
+
+.vn-location-text {
+  font-size: 1rem;
+  opacity: 0.9;
+  border-left: 1px solid rgba(255,255,255,0.4);
+  padding-left: 12px;
+}
+
+.vn-top-right {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 10;
+}
+
+.vn-textbox {
+  position: relative;
+  width: 90%;
+  max-width: 1000px;
+  margin: 0 auto 30px;
+  background: rgba(255, 255, 255, 0.92); /* Light theme as per reference image */
+  color: #333; /* Dark text for light background */
+  border-radius: 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  border: 4px solid white;
+}
+
+.vn-dialogue-content {
+  padding: 32px 40px 20px;
+  min-height: 160px;
+}
+
+.vn-speaker-name {
+  position: absolute;
+  top: -20px;
+  left: 40px;
+  background: #4fb3d6; /* Light Blue from image */
+  color: white;
+  padding: 6px 32px;
+  border-radius: 30px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  border: 2px solid white;
+}
+
+.vn-dialogue-text {
+  font-size: 1.4rem;
+  line-height: 1.6;
+  margin-top: 10px;
+  font-weight: 700;
+  color: #4a4a4a;
+  font-family: 'Zen Maru Gothic', sans-serif;
+}
+
+.vn-menu-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 24px;
+  gap: 12px;
+  border-top: 1px solid rgba(0,0,0,0.05);
+}
+
+.vn-menu-btn {
+  background: white;
+  border: 2px solid #a0d8ef;
+  color: #5a8a9f;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Zen Maru Gothic', sans-serif;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  font-size: 0.9rem;
+}
+
+.vn-menu-btn:hover {
+  background: #f0f9ff;
+  border-color: #4fb3d6;
+  color: #2c93b0;
+  transform: translateY(-2px);
+}
+
+.vn-menu-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  background: #f5f5f5;
+  border-color: #ddd;
+  color: #aaa;
+}
+
+.vn-menu-btn.warning {
+  border-color: #ffb0b0;
+  color: #d06060;
+}
+
+.vn-menu-btn.warning:hover {
+  background: #fff0f0;
+  border-color: #ff8080;
+}
+
+.vn-input-form {
+  padding: 32px 40px;
+}
+
+.vn-input-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vn-input-field {
+  flex: 1;
+  background: white;
+  color: #333;
+  border: 2px solid #ddd;
+  font-size: 1.1rem;
+}
+
+.vn-input-field:focus {
+    border-color: #4fb3d6;
+    box-shadow: 0 0 0 3px rgba(79, 179, 214, 0.2);
+}
+
+.vn-target-select {
+  width: auto;
+  min-width: 160px;
+  background: white;
+  color: #333;
+  border: 2px solid #ddd;
+}
+
+.vn-ask-btn {
+  padding: 10px 32px;
+  border-radius: 20px;
+}
+
+.vn-cancel-btn {
+  margin-top: 12px;
+  border-radius: 20px;
+  background: #eee;
+  color: #666;
+}
+
+/* Overlays */
+.vn-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 40px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.vn-overlay-content {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  padding: 30px;
+  width: 100%;
+  max-width: 1000px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.vn-notebook-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+  overflow-y: auto;
+  margin-top: 20px;
+  padding-right: 10px;
+}
+
+.vn-col h3 {
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+}
+
+.full-height {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.vn-guess-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.vn-loading {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 200;
+}
+
+.vn-error {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+}
+
+/* Chip buttons in light theme textbox */
+.vn-textbox .chip-btn {
+    background: #f0f0f5;
+    color: #555;
+    border: 1px solid #ddd;
+}
+.vn-textbox .chip-btn:hover {
+    background: #e0e6ff;
+    border-color: #a0d8ef;
+    color: #2c93b0;
+}
+
+/* Adjustments for mobile */
+@media (max-width: 768px) {
+    .vn-notebook-grid {
+        grid-template-columns: 1fr;
+    }
+    .vn-guess-grid {
+        grid-template-columns: 1fr;
+    }
+    .vn-date-badge {
+        font-size: 0.8rem;
+        padding: 6px 16px 6px 12px;
+    }
+    .vn-dialogue-content {
+        padding: 16px 20px;
+        min-height: 120px;
+    }
+    .vn-speaker-name {
+        left: 20px;
+        font-size: 0.9rem;
+    }
+    .vn-menu-bar {
+        flex-wrap: wrap;
+        justify-content: center;
+        padding-bottom: 16px;
+    }
+    .vn-textbox {
+        width: 95%;
+        margin-bottom: 16px;
+    }
+    .vn-input-row {
+        flex-direction: column;
+    }
+}

@@ -327,6 +327,23 @@ class GeminiLLMClient(LLMClient):
             raise LLMError(f"Gemini response blocked by safety filter: {block_reason}")
         raise LLMError("Gemini returned empty text")
 
+    def _build_thinking_config(self) -> genai_types.ThinkingConfig | None:
+        thinking_budget = self.settings.gemini_thinking_budget
+        if thinking_budget is not None:
+            if thinking_budget < 0:
+                raise LLMError(
+                    f"Invalid GEMINI_THINKING_BUDGET='{thinking_budget}'. Must be >= 0."
+                )
+            return genai_types.ThinkingConfig(thinking_budget=thinking_budget)
+
+        thinking_level = (self.settings.gemini_thinking_level or "").strip().lower()
+        if not thinking_level:
+            return None
+        if thinking_level not in self._supported_thinking_levels:
+            supported = ", ".join(sorted(self._supported_thinking_levels))
+            raise LLMError(f"Invalid GEMINI_THINKING_LEVEL='{thinking_level}'. Supported: {supported}")
+        return genai_types.ThinkingConfig(thinking_level=thinking_level)
+
     def _request(
         self,
         *,
@@ -341,12 +358,9 @@ class GeminiLLMClient(LLMClient):
         if response_schema is not None:
             config_kwargs["response_schema"] = response_schema
 
-        thinking_level = self.settings.gemini_thinking_level.strip().lower()
-        if thinking_level:
-            if thinking_level not in self._supported_thinking_levels:
-                supported = ", ".join(sorted(self._supported_thinking_levels))
-                raise LLMError(f"Invalid GEMINI_THINKING_LEVEL='{thinking_level}'. Supported: {supported}")
-            config_kwargs["thinking_config"] = genai_types.ThinkingConfig(thinking_level=thinking_level)
+        thinking_config = self._build_thinking_config()
+        if thinking_config is not None:
+            config_kwargs["thinking_config"] = thinking_config
 
         config = genai_types.GenerateContentConfig(**config_kwargs)
         response = self._get_client().models.generate_content(

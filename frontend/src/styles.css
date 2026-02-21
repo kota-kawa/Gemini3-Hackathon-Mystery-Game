@@ -619,6 +619,8 @@ h2 {
   line-height: 1.7;
   color: var(--text);
   border-left: 3px solid var(--gold);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .ask-form,
@@ -838,6 +840,11 @@ textarea {
 
 .result-panel p {
   line-height: 1.8;
+}
+
+.result-feedback-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .result-panel strong {
@@ -1077,6 +1084,8 @@ textarea {
   border: 1px solid var(--panel-border);
   max-width: 600px;
   margin: 16px auto !important;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* Visual Novel Layout Styles */
@@ -1184,6 +1193,8 @@ textarea {
   color: rgba(232, 228, 240, 0.95);
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   font-family: 'Zen Maru Gothic', sans-serif;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .vn-briefing {
@@ -1329,6 +1340,62 @@ textarea {
   border: 1px solid rgba(138, 100, 180, 0.35);
 }
 
+.vn-qa-overlay-content {
+  max-width: 1120px;
+}
+
+.vn-qa-hint {
+  margin-top: 12px;
+}
+
+.vn-qa-layout {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  flex: 1;
+}
+
+.vn-qa-log-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  border: 1px solid rgba(138, 100, 180, 0.28);
+  border-radius: var(--radius);
+  background: rgba(17, 15, 26, 0.64);
+  padding: 12px;
+}
+
+.vn-qa-log-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.vn-log-toggle-btn {
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+
+.vn-qa-log {
+  margin: 12px 0 0;
+  max-height: none;
+  min-height: 0;
+}
+
+.vn-qa-form {
+  padding: 16px 0 0;
+  background: transparent;
+  border-top: 1px solid rgba(138, 100, 180, 0.28);
+}
+
+.vn-qa-form .quick-option-row {
+  margin-bottom: 2px;
+}
+
 /* Overlays */
 .vn-overlay {
   position: fixed;
@@ -1412,6 +1479,14 @@ textarea {
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 200;
+    width: min(90vw, 440px);
+    margin: 0;
+    color: #65e58d;
+    background: #122218;
+    border: 2px solid #2f9d53;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.58);
+    animation: none;
+    opacity: 1;
 }
 
 .vn-error {
@@ -1473,6 +1548,23 @@ textarea {
     }
     .vn-input-row {
         flex-direction: column;
+    }
+    .vn-overlay {
+        padding: 20px 12px;
+    }
+    .vn-overlay-content {
+        padding: 18px;
+        max-height: 94vh;
+    }
+    .vn-qa-log-header {
+        gap: 10px;
+        align-items: stretch;
+    }
+    .vn-log-toggle-btn {
+        width: 100%;
+    }
+    .vn-qa-form {
+        padding-top: 12px;
     }
     .vn-briefing-text {
         font-size: 0.96rem;

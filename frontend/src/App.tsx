@@ -15,7 +15,7 @@ import type { GameStateResponse, GuessResponse, LanguageMode } from './types';
 
 type Screen = 'title' | 'game' | 'result';
 type ReasoningStyle = 'evidence' | 'timeline' | 'elimination';
-type UiMode = 'dialogue' | 'input' | 'log' | 'notebook' | 'case' | 'guessing';
+type UiMode = 'dialogue' | 'qa' | 'notebook' | 'case' | 'guessing';
 
 interface GuessForm {
   killer: string;
@@ -104,6 +104,31 @@ function buildReasoningDraft(mode: LanguageMode, style: ReasoningStyle, guess: G
   return `Based on evidence consistency, ${killer} likely acted from ${motive}, carried out ${method}, and concealed the crime through ${trick}.`;
 }
 
+function formatReadableText(text: string): string {
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  if (!normalized) {
+    return text;
+  }
+
+  if (normalized.includes('\n')) {
+    return normalized;
+  }
+
+  let withBreaks = normalized
+    .replace(/([。！？!?])(?=[^\n])/g, '$1\n')
+    .replace(/([;；:])(?=[^\n])/g, '$1\n');
+
+  if (!withBreaks.includes('\n') && withBreaks.length > 100) {
+    withBreaks = withBreaks.replace(/([、，,])(?=[^\n])/g, '$1\n');
+  }
+
+  return withBreaks
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n');
+}
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>('title');
   const [languageMode, setLanguageMode] = useState<LanguageMode>('ja');
@@ -119,6 +144,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [uiMode, setUiMode] = useState<UiMode>('dialogue');
+  const [isQaLogExpanded, setIsQaLogExpanded] = useState(true);
   const [showBriefing, setShowBriefing] = useState(false);
 
   const text = useMemo(() => t(languageMode), [languageMode]);
@@ -165,6 +191,7 @@ export default function App() {
       setReasoningStyle('evidence');
       setGuessForm({ ...emptyGuess, killer: state.characters[0]?.name ?? '' });
       setUiMode('dialogue');
+      setIsQaLogExpanded(true);
       setShowBriefing(true);
       setScreen('game');
     } catch (error) {
@@ -203,7 +230,8 @@ export default function App() {
       setGameState(refreshed);
       setQuestion('');
       setSelectedQuestionTemplate('');
-      setUiMode('dialogue');
+      setUiMode('qa');
+      setIsQaLogExpanded(true);
     } catch (error) {
       setErrorMessage(resolveError(error));
     } finally {
@@ -269,6 +297,7 @@ export default function App() {
     setGuessForm({ ...emptyGuess });
     setShowBriefing(false);
     setUiMode('dialogue');
+    setIsQaLogExpanded(true);
     setScreen('title');
     await handleStartGame();
   };
@@ -324,6 +353,14 @@ export default function App() {
     return gameState.messages[gameState.messages.length - 1];
   }, [gameState]);
 
+  const latestDialogueText = useMemo(() => {
+    if (!gameState) {
+      return '';
+    }
+    const raw = latestMessage ? latestMessage.answer_text : gameState.case_summary.summary;
+    return formatReadableText(raw);
+  }, [gameState, latestMessage]);
+
   const briefingCaseText = useMemo(() => {
     if (!gameState) {
       return '';
@@ -340,9 +377,9 @@ export default function App() {
       return '';
     }
     if (languageMode === 'ja') {
-      return `質問は合計${gameState.remaining_questions}回まで可能です。「質問」で聞き込み、「ログ」と「ノート」で情報を整理し、準備ができたら「推理」で結論を提出してください。`;
+      return `質問は合計${gameState.remaining_questions}回まで可能です。「質問」で聞き込み、「会話ログ」と「ノート」で情報を整理し、準備ができたら「推理」で結論を提出してください。`;
     }
-    return `You can ask up to ${gameState.remaining_questions} questions. Use "Ask" to interrogate, review "Log" and "Notebook", then submit your theory from "Guess".`;
+    return `You can ask up to ${gameState.remaining_questions} questions. Use "Ask" to interrogate, review "Chat Log" and "Notebook", then submit your theory from "Guess".`;
   }, [gameState, languageMode]);
 
   return (
@@ -479,57 +516,10 @@ export default function App() {
                     </div>
                   ) : (
                     <p className="vn-dialogue-text">
-                      {latestMessage ? latestMessage.answer_text : gameState.case_summary.summary}
+                      {latestDialogueText}
                     </p>
                   )}
                </div>
-            )}
-
-            {uiMode === 'input' && (
-              <form className="vn-input-form" onSubmit={handleAsk}>
-                <div className="vn-input-row">
-                    <input
-                        type="text"
-                        className="vn-input-field"
-                        placeholder={text.askPlaceholder}
-                        value={question}
-                        onChange={(event) => setQuestion(event.target.value)}
-                        autoFocus
-                    />
-                    <select
-                        className="vn-target-select"
-                        value={target}
-                        onChange={(event) => setTarget(event.target.value)}
-                    >
-                        <option value="">{text.askTargetAnyone}</option>
-                        {gameState.characters.map((character) => (
-                          <option value={character.name} key={character.id}>
-                            {character.name}
-                          </option>
-                        ))}
-                    </select>
-                    <button className="primary-btn vn-ask-btn" type="submit">
-                        {text.askButton}
-                    </button>
-                </div>
-                <div className="quick-option-row">
-                    {questionTemplates.slice(0, 3).map((template) => (
-                        <button
-                        type="button"
-                        key={template}
-                        className="chip-btn"
-                        onClick={() => {
-                            setQuestion(template);
-                        }}
-                        >
-                        {template}
-                        </button>
-                    ))}
-                </div>
-                <button type="button" className="secondary-btn vn-cancel-btn" onClick={() => setUiMode('dialogue')}>
-                    {text.cancel}
-                </button>
-              </form>
             )}
 
             {/* Menu Bar */}
@@ -546,13 +536,10 @@ export default function App() {
                 <div className="vn-menu-group">
                 <button
                   className="vn-menu-btn"
-                  onClick={() => setUiMode('input')}
-                  disabled={showBriefing || isGuessing || uiMode === 'guessing' || uiMode === 'input'}
+                  onClick={() => setUiMode('qa')}
+                  disabled={showBriefing || isGuessing || uiMode === 'guessing' || uiMode === 'qa'}
                 >
                     {text.menuAsk}
-                </button>
-                <button className="vn-menu-btn" onClick={() => setUiMode('log')} disabled={showBriefing || uiMode === 'guessing'}>
-                    {text.menuLog}
                 </button>
                 <button className="vn-menu-btn" onClick={() => setUiMode('notebook')} disabled={showBriefing || uiMode === 'guessing'}>
                     {text.menuNotebook}
@@ -583,22 +570,84 @@ export default function App() {
             </div>
           )}
 
-          {uiMode === 'log' && (
-            <div className="vn-overlay">
-                <div className="vn-overlay-content">
-                    <div className="row-between">
-                        <h2>{text.chatTitle}</h2>
-                        <button className="secondary-btn" onClick={() => setUiMode('dialogue')}>{text.close}</button>
+          {uiMode === 'qa' && (
+            <div className="vn-overlay vn-qa-overlay">
+              <div className="vn-overlay-content vn-qa-overlay-content">
+                <div className="row-between">
+                  <h2>{text.qaPanelTitle}</h2>
+                  <button className="secondary-btn" onClick={() => setUiMode('dialogue')}>
+                    {text.close}
+                  </button>
+                </div>
+                <p className="form-helper vn-qa-hint">{text.qaPanelHint}</p>
+                <div className="vn-qa-layout">
+                  <section className="vn-qa-log-section">
+                    <div className="row-between vn-qa-log-header">
+                      <h3>{text.chatTitle}</h3>
+                      <button
+                        className="secondary-btn vn-log-toggle-btn"
+                        type="button"
+                        onClick={() => setIsQaLogExpanded((current) => !current)}
+                      >
+                        {isQaLogExpanded ? text.hideLog : text.showLog}
+                      </button>
                     </div>
-                    <div className="chat-log full-height">
+                    {isQaLogExpanded && (
+                      <div className="chat-log full-height vn-qa-log">
+                        {gameState.messages.length === 0 && <p className="empty-log">{text.noMessages}</p>}
                         {gameState.messages.map((message) => (
                           <article key={message.id} className="chat-item">
-                            <p className="chat-q">{text.chatQuestionPrefix} {message.question}</p>
-                            <p className="chat-a">{text.chatAnswerPrefix} {message.answer_text}</p>
+                            <p className="chat-q">
+                              {text.chatQuestionPrefix} {message.question}
+                            </p>
+                            <p className="chat-a">
+                              {text.chatAnswerPrefix} {formatReadableText(message.answer_text)}
+                            </p>
                           </article>
                         ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <form className="vn-input-form vn-qa-form" onSubmit={handleAsk}>
+                    <div className="vn-input-row">
+                      <input
+                        type="text"
+                        className="vn-input-field"
+                        placeholder={text.askPlaceholder}
+                        value={question}
+                        onChange={(event) => setQuestion(event.target.value)}
+                        autoFocus
+                      />
+                      <select className="vn-target-select" value={target} onChange={(event) => setTarget(event.target.value)}>
+                        <option value="">{text.askTargetAnyone}</option>
+                        {gameState.characters.map((character) => (
+                          <option value={character.name} key={character.id}>
+                            {character.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button className="primary-btn vn-ask-btn" type="submit" disabled={loading || !question.trim()}>
+                        {text.askButton}
+                      </button>
                     </div>
+                    <div className="quick-option-row">
+                      {questionTemplates.slice(0, 3).map((template) => (
+                        <button
+                          type="button"
+                          key={template}
+                          className="chip-btn"
+                          onClick={() => {
+                            setQuestion(template);
+                          }}
+                        >
+                          {template}
+                        </button>
+                      ))}
+                    </div>
+                  </form>
                 </div>
+              </div>
             </div>
           )}
 
@@ -807,7 +856,7 @@ export default function App() {
           </ul>
 
           <h3>{text.feedback}</h3>
-          <p>{result.feedback}</p>
+          <p className="result-feedback-text">{formatReadableText(result.feedback)}</p>
 
           <h3>{text.contradictions}</h3>
           <ul>
@@ -825,7 +874,7 @@ export default function App() {
           </ol>
 
           <h3>{text.solution}</h3>
-          <p className="solution-text">{result.solution_summary}</p>
+          <p className="solution-text">{formatReadableText(result.solution_summary)}</p>
 
           <button className="primary-btn" onClick={handlePlayAgain}>
             {text.playAgain}

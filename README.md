@@ -64,7 +64,7 @@ npm run dev
 |----------|---------|-------------|
 | `LLM_PROVIDER` | `fake` | `fake` (offline demo) or `gemini` (real AI) |
 | `GEMINI_API_KEY` | - | Required when using Gemini |
-| `GEMINI_MODEL` | `gemini-3-flash-preview` | Gemini model to use |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model to use |
 | `MAX_QUESTIONS` | `12` | Questions allowed per game |
 | `DATABASE_URL` | `sqlite:///./mystery_game.db` | Database connection |
 
@@ -75,9 +75,10 @@ npm run dev
 |----------|---------|-------------|
 | `LLM_PROVIDER` | `fake` | `fake` or `gemini` |
 | `GEMINI_API_KEY` | - | Required for Gemini |
-| `GEMINI_MODEL` | `gemini-3-flash-preview` | Model name |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Model name |
 | `GEMINI_API_VERSION` | `v1beta` | API version |
-| `GEMINI_THINKING_LEVEL` | `minimal` | `minimal\|low\|medium\|high` |
+| `GEMINI_THINKING_BUDGET` | `0` | `0` disables thinking for lowest latency |
+| `GEMINI_THINKING_LEVEL` | - | Legacy fallback (`minimal\|low\|medium\|high`) when budget is unset |
 | `GEMINI_RETRY_DELAY_SEC` | `0.8` | Initial retry delay |
 | `GEMINI_RETRY_MAX_DELAY_SEC` | `20` | Max retry delay |
 | `GEMINI_MAX_ATTEMPTS` | `5` | Max attempts per request |
@@ -183,7 +184,7 @@ npm run dev
 |------|---------|------|
 | `LLM_PROVIDER` | `fake` | `fake`（オフラインデモ）または `gemini`（本番AI） |
 | `GEMINI_API_KEY` | - | Gemini使用時に必須 |
-| `GEMINI_MODEL` | `gemini-3-flash-preview` | 使用するGeminiモデル |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | 使用するGeminiモデル |
 | `MAX_QUESTIONS` | `12` | ゲームあたりの質問回数 |
 | `DATABASE_URL` | `sqlite:///./mystery_game.db` | データベース接続先 |
 
@@ -194,9 +195,10 @@ npm run dev
 |------|---------|------|
 | `LLM_PROVIDER` | `fake` | `fake` または `gemini` |
 | `GEMINI_API_KEY` | - | Gemini使用時に必須 |
-| `GEMINI_MODEL` | `gemini-3-flash-preview` | モデル名 |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | モデル名 |
 | `GEMINI_API_VERSION` | `v1beta` | APIバージョン |
-| `GEMINI_THINKING_LEVEL` | `minimal` | `minimal\|low\|medium\|high` |
+| `GEMINI_THINKING_BUDGET` | `0` | `0`で思考を無効化し、最小レイテンシ |
+| `GEMINI_THINKING_LEVEL` | - | 旧設定（`minimal\|low\|medium\|high`）。budget未指定時のみ使用 |
 | `GEMINI_RETRY_DELAY_SEC` | `0.8` | リトライ初期待機秒 |
 | `GEMINI_RETRY_MAX_DELAY_SEC` | `20` | リトライ最大待機秒 |
 | `GEMINI_MAX_ATTEMPTS` | `5` | 1リクエストの最大試行回数 |

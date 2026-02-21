@@ -11,9 +11,10 @@ class Settings(BaseSettings):
     max_questions: int = 12
     llm_provider: str = "fake"
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-3-flash-preview"
+    gemini_model: str = "gemini-2.5-flash"
     gemini_api_version: str = "v1beta"
-    gemini_thinking_level: str = "minimal"
+    gemini_thinking_budget: int | None = 0
+    gemini_thinking_level: str | None = None
     gemini_retry_delay_sec: float = 0.8
     gemini_retry_max_delay_sec: float = 20.0
     gemini_max_attempts: int = 5

@@ -50,6 +50,7 @@ class ScoringService:
         llm_result: dict | None = None,
     ) -> dict:
         if llm_result and self._llm_payload_looks_valid(llm_result):
+            llm_result["grade"] = _grade(int(llm_result.get("score", 0)))
             return llm_result
 
         killer = next(c for c in case_data.characters if c.id == case_data.killer_id)

@@ -197,7 +197,7 @@ body::before {
 }
 
 .novel-main-panel .chat-log {
-  max-height: 52vh;
+  max-height: 208vh;
 }
 
 .scene-headline {
@@ -557,7 +557,7 @@ h2 {
 /* Visual Novel Style Chat/Text Box */
 .chat-log {
   margin: 12px 0;
-  max-height: 380px;
+  max-height: 1520px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -940,7 +940,7 @@ textarea {
   }
 
   .novel-main-panel .chat-log {
-    max-height: 42vh;
+    max-height: 168vh;
   }
 
   .novel-clue-panel {
@@ -1339,6 +1339,7 @@ textarea {
   gap: 14px;
   min-height: 0;
   flex: 1;
+  overflow: hidden;
 }
 
 .vn-qa-log-section {
@@ -1346,6 +1347,7 @@ textarea {
   flex-direction: column;
   min-height: 0;
   flex: 1;
+  overflow: hidden;
   border: 1px solid rgba(138, 100, 180, 0.28);
   border-radius: var(--radius);
   background: rgba(17, 15, 26, 0.64);
@@ -1366,7 +1368,7 @@ textarea {
 
 .vn-qa-log {
   margin: 12px 0 0;
-  max-height: none;
+  max-height: 100%;
   min-height: 0;
 }
 
@@ -1446,8 +1448,14 @@ textarea {
 }
 
 .full-height {
-    flex: 1;
+    flex: 1 1 0;
+    min-height: 0;
     overflow-y: auto;
+}
+
+.vn-qa-log.full-height {
+    flex-basis: 80vh;
+    min-height: min(80vh, 100%);
 }
 
 .vn-guess-grid {

@@ -303,8 +303,8 @@ export default function App() {
               {gameState.messages.length === 0 && <p className="empty-log">{text.noMessages}</p>}
               {gameState.messages.map((message) => (
                 <article key={message.id} className="chat-item">
-                  <p className="chat-q">💭 {message.question}</p>
-                  <p className="chat-a">💬 {message.answer_text}</p>
+                  <p className="chat-q">Q: {message.question}</p>
+                  <p className="chat-a">A: {message.answer_text}</p>
                 </article>
               ))}
             </div>
@@ -335,7 +335,7 @@ export default function App() {
               </button>
             )}
 
-            {isGuessing && <p className="notice">💝 {text.stateGuessing}</p>}
+            {isGuessing && <p className="notice">{text.stateGuessing}</p>}
 
             {isGuessing && (
               <form className="guess-form" id="deduction" onSubmit={handleSubmitGuess}>
@@ -386,17 +386,17 @@ export default function App() {
             <h2>{text.caseTitle}</h2>
             <p>{gameState.case_summary.summary}</p>
             <p>
-              📍 {gameState.case_summary.location} / ⏰ {gameState.case_summary.time_window}
+              {gameState.case_summary.location} / {gameState.case_summary.time_window}
             </p>
             <p>
-              👤 {gameState.case_summary.victim_name} - {gameState.case_summary.found_state}
+              {gameState.case_summary.victim_name} - {gameState.case_summary.found_state}
             </p>
 
             <h3>{text.charactersTitle}</h3>
             <ul className="character-list">
               {gameState.characters.map((character) => (
                 <li key={character.id} className="character-item">
-                  <strong>🎭 {character.name}</strong>
+                  <strong>{character.name}</strong>
                   <span className="character-role">（{character.role}）</span>
                 </li>
               ))}
@@ -407,7 +407,7 @@ export default function App() {
             <ul className="evidence-list">
               {gameState.unlocked_evidence.map((evidence) => (
                 <li key={evidence.id} className="evidence-item">
-                  <strong>🔍 {evidence.name}</strong>
+                  <strong>{evidence.name}</strong>
                   <p>{evidence.detail}</p>
                 </li>
               ))}
@@ -455,7 +455,7 @@ export default function App() {
 
           <h3>{text.contradictions}</h3>
           <ul>
-            {result.contradictions.length === 0 && <li>なし ✨</li>}
+            {result.contradictions.length === 0 && <li>なし</li>}
             {result.contradictions.map((line) => (
               <li key={line}>{line}</li>
             ))}

@@ -1,0 +1,37 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:///./mystery_game.db}
+      MAX_QUESTIONS: ${MAX_QUESTIONS:-12}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      GEMINI_TIMEOUT_SEC: ${GEMINI_TIMEOUT_SEC:-12}
+      GEMINI_RETRY_DELAY_SEC: ${GEMINI_RETRY_DELAY_SEC:-0.8}
+      WATCHFILES_FORCE_POLLING: "true"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    command: sh ./dev-entrypoint.sh
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+
+volumes:
+  frontend_node_modules:

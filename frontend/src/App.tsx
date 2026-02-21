@@ -328,23 +328,25 @@ export default function App() {
     <div className={`app-shell ${isImmersive ? 'app-shell-immersive' : ''}`}>
       {screen === 'title' && (
         <>
-          <header className="hero">
-            <div>
+          <header className="hero hero-title">
+            <div className="hero-main">
               <p className="eyebrow">Mystery Visual Novel</p>
               <h1>{text.appTitle}</h1>
               <p className="subtitle">{text.subtitle}</p>
             </div>
-            <select
-              className="language-toggle"
-              value={languageMode}
-              onChange={(event) => handleLanguageChange(event.target.value as LanguageMode)}
-            >
-              <option value="ja">🇯🇵 日本語</option>
-              <option value="en">🇺🇸 English</option>
-            </select>
+            <div className="hero-tools">
+              <select
+                className="language-toggle"
+                value={languageMode}
+                onChange={(event) => handleLanguageChange(event.target.value as LanguageMode)}
+              >
+                <option value="ja">🇯🇵 日本語</option>
+                <option value="en">🇺🇸 English</option>
+              </select>
+            </div>
           </header>
 
-          <section className="guide-card">
+          <section className="guide-card title-guide-card">
             <h2>{text.currentTaskTitle}</h2>
             <p>{currentTask.main}</p>
             {currentTask.sub && <p className="guide-sub">{currentTask.sub}</p>}
@@ -353,20 +355,36 @@ export default function App() {
           {errorMessage && <div className="error-box">{errorMessage}</div>}
           {loading && <div className="loading">{text.loading}</div>}
 
-          <main className="panel title-panel">
-            <h2>{text.rulesTitle}</h2>
-            <p>{text.rulesBody}</p>
+          <section className="story-flow story-flow-title" aria-label={text.navLabel}>
+            {storyFlow.map((label, index) => (
+              <div
+                key={label}
+                className={`flow-node ${index < flowStep ? 'done' : ''} ${index === flowStep ? 'active' : ''}`}
+              >
+                <span className="flow-index">{index + 1}</span>
+                <span>{label}</span>
+              </div>
+            ))}
+          </section>
 
-            <h3>{text.quickStartTitle}</h3>
-            <ol className="quick-steps">
-              <li>{text.quickStep1}</li>
-              <li>{text.quickStep2}</li>
-              <li>{text.quickStep3}</li>
-            </ol>
+          <main className="title-grid">
+            <section className="panel title-panel">
+              <h2>{text.rulesTitle}</h2>
+              <p className="title-rules-body">{text.rulesBody}</p>
+              <button className="primary-btn title-start-btn" onClick={handleStartGame}>
+                {text.startGame}
+              </button>
+            </section>
 
-            <button className="primary-btn" onClick={handleStartGame}>
-              {text.startGame}
-            </button>
+            <aside className="panel title-panel title-side-panel">
+              <h3>{text.quickStartTitle}</h3>
+              <ol className="quick-steps">
+                <li>{text.quickStep1}</li>
+                <li>{text.quickStep2}</li>
+                <li>{text.quickStep3}</li>
+              </ol>
+              <span className="badge title-badge">{text.remainingQuestions}: 12</span>
+            </aside>
           </main>
         </>
       )}
@@ -440,7 +458,7 @@ export default function App() {
           <div className="vn-textbox">
             {uiMode === 'dialogue' && (
                <div className="vn-dialogue-content">
-                  <h3 className="vn-speaker-name">Game Master</h3>
+                  <h3 className="vn-speaker-name">{text.gmName}</h3>
                   <p className="vn-dialogue-text">
                     {latestMessage ? latestMessage.answer_text : gameState.case_summary.summary}
                   </p>
@@ -489,7 +507,7 @@ export default function App() {
                     ))}
                 </div>
                 <button type="button" className="secondary-btn vn-cancel-btn" onClick={() => setUiMode('dialogue')}>
-                    Cancel
+                    {text.cancel}
                 </button>
               </form>
             )}
@@ -497,16 +515,16 @@ export default function App() {
             {/* Menu Bar */}
             <div className="vn-menu-bar">
                 <button className="vn-menu-btn" onClick={() => setUiMode('input')} disabled={uiMode === 'guessing' || uiMode === 'input'}>
-                    Ask
+                    {text.menuAsk}
                 </button>
                 <button className="vn-menu-btn" onClick={() => setUiMode('log')} disabled={uiMode === 'guessing'}>
-                    Log
+                    {text.menuLog}
                 </button>
                 <button className="vn-menu-btn" onClick={() => setUiMode('notebook')} disabled={uiMode === 'guessing'}>
-                    Notebook
+                    {text.menuNotebook}
                 </button>
                 <button className="vn-menu-btn warning" onClick={handleMoveToGuess} disabled={uiMode === 'guessing'}>
-                    Guess
+                    {text.menuGuess}
                 </button>
             </div>
           </div>
@@ -517,13 +535,13 @@ export default function App() {
                 <div className="vn-overlay-content">
                     <div className="row-between">
                         <h2>{text.chatTitle}</h2>
-                        <button className="secondary-btn" onClick={() => setUiMode('dialogue')}>Close</button>
+                        <button className="secondary-btn" onClick={() => setUiMode('dialogue')}>{text.close}</button>
                     </div>
                     <div className="chat-log full-height">
                         {gameState.messages.map((message) => (
                           <article key={message.id} className="chat-item">
-                            <p className="chat-q">Q: {message.question}</p>
-                            <p className="chat-a">A: {message.answer_text}</p>
+                            <p className="chat-q">{text.chatQuestionPrefix} {message.question}</p>
+                            <p className="chat-a">{text.chatAnswerPrefix} {message.answer_text}</p>
                           </article>
                         ))}
                     </div>
@@ -536,7 +554,7 @@ export default function App() {
                 <div className="vn-overlay-content">
                     <div className="row-between">
                         <h2>{text.caseTitle}</h2>
-                        <button className="secondary-btn" onClick={() => setUiMode('dialogue')}>Close</button>
+                        <button className="secondary-btn" onClick={() => setUiMode('dialogue')}>{text.close}</button>
                     </div>
                     <div className="vn-notebook-grid">
                         <div className="vn-col">

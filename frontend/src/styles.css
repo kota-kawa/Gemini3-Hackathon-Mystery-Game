@@ -251,6 +251,26 @@ body::before {
   overflow: hidden;
 }
 
+.hero-title {
+  margin-bottom: 14px;
+}
+
+.hero-main {
+  max-width: 760px;
+}
+
+.hero-main h1 {
+  margin-bottom: 2px;
+  line-height: 1.24;
+}
+
+.hero-tools {
+  min-width: 170px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+}
+
 .hero::before {
   content: '';
   position: absolute;
@@ -389,16 +409,77 @@ h2 {
   font-size: 14px;
 }
 
-.title-panel,
+.title-guide-card {
+  margin-bottom: 14px;
+}
+
+.story-flow-title {
+  margin-bottom: 16px;
+}
+
+.story-flow-title .flow-node {
+  background: rgba(20, 18, 28, 0.85);
+}
+
+.title-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.28fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.title-panel {
+  animation: fadeIn 0.5s ease-out;
+  max-width: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .result-panel {
   max-width: 760px;
   animation: fadeIn 0.5s ease-out;
 }
 
-.title-panel h2,
+.title-panel h2 {
+  text-align: left;
+  margin-bottom: 10px;
+}
+
 .result-panel h2 {
   text-align: center;
   margin-bottom: 16px;
+}
+
+.title-rules-body {
+  margin: 0 0 14px;
+  line-height: 1.9;
+  color: rgba(232, 228, 240, 0.92);
+}
+
+.title-start-btn {
+  margin-top: auto;
+  align-self: flex-start;
+  min-width: 280px;
+  min-height: 52px;
+}
+
+.title-side-panel {
+  background: linear-gradient(155deg, rgba(34, 28, 52, 0.96), rgba(20, 17, 31, 0.95));
+}
+
+.title-side-panel h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: var(--gold);
+}
+
+.title-side-panel .quick-steps {
+  margin-bottom: 16px;
+}
+
+.title-badge {
+  align-self: flex-start;
 }
 
 .quick-steps {
@@ -784,12 +865,29 @@ textarea {
     flex-direction: column;
   }
 
+  .hero-main {
+    max-width: none;
+  }
+
+  .hero-tools {
+    width: 100%;
+  }
+
   .hero::before {
     display: none;
   }
 
   .language-toggle {
     width: 100%;
+  }
+
+  .title-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .title-start-btn {
+    width: 100%;
+    min-width: 0;
   }
 
   .game-layout {
@@ -1241,6 +1339,9 @@ textarea {
 
 /* Adjustments for mobile */
 @media (max-width: 768px) {
+    .quick-steps {
+        padding: 14px 12px 14px 32px;
+    }
     .vn-notebook-grid {
         grid-template-columns: 1fr;
     }

@@ -418,16 +418,6 @@ export default function App() {
               <h1>{text.appTitle}</h1>
               <p className="subtitle">{text.subtitle}</p>
             </div>
-            <div className="novel-topbar-right">
-              <select
-                className="language-toggle"
-                value={languageMode}
-                onChange={(event) => handleLanguageChange(event.target.value as LanguageMode)}
-              >
-                <option value="ja">🇯🇵 日本語</option>
-                <option value="en">🇺🇸 English</option>
-              </select>
-            </div>
           </header>
 
           <section className="story-flow" aria-label={text.navLabel}>
@@ -465,14 +455,6 @@ export default function App() {
              <span className="badge">
                {text.remainingQuestions}: {gameState.remaining_questions}
              </span>
-             <select
-                className="language-toggle"
-                value={languageMode}
-                onChange={(event) => handleLanguageChange(event.target.value as LanguageMode)}
-              >
-                <option value="ja">🇯🇵 日本語</option>
-                <option value="en">🇺🇸 English</option>
-              </select>
           </div>
 
           {/* Dialogue Box Area */}

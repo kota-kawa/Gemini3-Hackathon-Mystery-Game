@@ -39,7 +39,7 @@ def build_answer_prompt(
     history: list[dict],
     language_mode: LanguageMode,
 ) -> str:
-    history_json = json.dumps(history[-6:], ensure_ascii=False)
+    history_json = json.dumps(history, ensure_ascii=False)
     case_json = json.dumps(case_data.model_dump(), ensure_ascii=False)
     target_line = f"Target: {target}" if target else "Target: overall"
 

@@ -119,6 +119,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [uiMode, setUiMode] = useState<UiMode>('dialogue');
+  const [showBriefing, setShowBriefing] = useState(false);
 
   const text = useMemo(() => t(languageMode), [languageMode]);
   const questionTemplates = useMemo(() => questionTemplatesFor(languageMode), [languageMode]);
@@ -163,6 +164,8 @@ export default function App() {
       setTarget('');
       setReasoningStyle('evidence');
       setGuessForm({ ...emptyGuess, killer: state.characters[0]?.name ?? '' });
+      setUiMode('dialogue');
+      setShowBriefing(true);
       setScreen('game');
     } catch (error) {
       setErrorMessage(resolveError(error));
@@ -188,7 +191,7 @@ export default function App() {
 
   const handleAsk = async (event: FormEvent) => {
     event.preventDefault();
-    if (!gameId || !question.trim()) {
+    if (!gameId || !question.trim() || showBriefing) {
       return;
     }
 
@@ -209,7 +212,7 @@ export default function App() {
   };
 
   const handleMoveToGuess = async () => {
-    if (!gameId) {
+    if (!gameId || showBriefing) {
       return;
     }
     setLoading(true);
@@ -269,6 +272,8 @@ export default function App() {
     setTarget('');
     setReasoningStyle('evidence');
     setGuessForm({ ...emptyGuess });
+    setShowBriefing(false);
+    setUiMode('dialogue');
     setScreen('title');
     await handleStartGame();
   };
@@ -323,6 +328,27 @@ export default function App() {
     }
     return gameState.messages[gameState.messages.length - 1];
   }, [gameState]);
+
+  const briefingCaseText = useMemo(() => {
+    if (!gameState) {
+      return '';
+    }
+    const summary = gameState.case_summary;
+    if (languageMode === 'ja') {
+      return `舞台は${summary.location}、時間帯は${summary.time_window}です。被害者は${summary.victim_name}。${summary.summary} 発見時の状況は「${summary.found_state}」。`;
+    }
+    return `The case takes place at ${summary.location} during ${summary.time_window}. The victim is ${summary.victim_name}. ${summary.summary} The victim was found ${summary.found_state}.`;
+  }, [gameState, languageMode]);
+
+  const briefingHowToText = useMemo(() => {
+    if (!gameState) {
+      return '';
+    }
+    if (languageMode === 'ja') {
+      return `質問は合計${gameState.remaining_questions}回まで可能です。「質問」で聞き込み、「ログ」と「ノート」で情報を整理し、準備ができたら「推理」で結論を提出してください。`;
+    }
+    return `You can ask up to ${gameState.remaining_questions} questions. Use "Ask" to interrogate, review "Log" and "Notebook", then submit your theory from "Guess".`;
+  }, [gameState, languageMode]);
 
   return (
     <div className={`app-shell ${isImmersive ? 'app-shell-immersive' : ''}`}>
@@ -459,9 +485,26 @@ export default function App() {
             {uiMode === 'dialogue' && (
                <div className="vn-dialogue-content">
                   <h3 className="vn-speaker-name">{text.gmName}</h3>
-                  <p className="vn-dialogue-text">
-                    {latestMessage ? latestMessage.answer_text : gameState.case_summary.summary}
-                  </p>
+                  {showBriefing ? (
+                    <div className="vn-briefing">
+                      <p className="vn-briefing-title">{text.briefingTitle}</p>
+                      <section className="vn-briefing-section">
+                        <p className="vn-briefing-label">{text.briefingCaseLabel}</p>
+                        <p className="vn-briefing-text">{briefingCaseText}</p>
+                      </section>
+                      <section className="vn-briefing-section">
+                        <p className="vn-briefing-label">{text.briefingHowToLabel}</p>
+                        <p className="vn-briefing-text">{briefingHowToText}</p>
+                      </section>
+                      <button className="primary-btn vn-briefing-btn" onClick={() => setShowBriefing(false)}>
+                        {text.briefingAction}
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="vn-dialogue-text">
+                      {latestMessage ? latestMessage.answer_text : gameState.case_summary.summary}
+                    </p>
+                  )}
                </div>
             )}
 
@@ -514,16 +557,24 @@ export default function App() {
 
             {/* Menu Bar */}
             <div className="vn-menu-bar">
-                <button className="vn-menu-btn" onClick={() => setUiMode('input')} disabled={uiMode === 'guessing' || uiMode === 'input'}>
+                <button
+                  className="vn-menu-btn"
+                  onClick={() => setUiMode('input')}
+                  disabled={showBriefing || uiMode === 'guessing' || uiMode === 'input'}
+                >
                     {text.menuAsk}
                 </button>
-                <button className="vn-menu-btn" onClick={() => setUiMode('log')} disabled={uiMode === 'guessing'}>
+                <button className="vn-menu-btn" onClick={() => setUiMode('log')} disabled={showBriefing || uiMode === 'guessing'}>
                     {text.menuLog}
                 </button>
-                <button className="vn-menu-btn" onClick={() => setUiMode('notebook')} disabled={uiMode === 'guessing'}>
+                <button className="vn-menu-btn" onClick={() => setUiMode('notebook')} disabled={showBriefing || uiMode === 'guessing'}>
                     {text.menuNotebook}
                 </button>
-                <button className="vn-menu-btn warning" onClick={handleMoveToGuess} disabled={uiMode === 'guessing'}>
+                <button
+                  className="vn-menu-btn warning"
+                  onClick={handleMoveToGuess}
+                  disabled={showBriefing || uiMode === 'guessing'}
+                >
                     {text.menuGuess}
                 </button>
             </div>

@@ -1165,6 +1165,48 @@ textarea {
   font-family: 'Zen Maru Gothic', sans-serif;
 }
 
+.vn-briefing {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vn-briefing-title {
+  margin: 6px 0 0;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #2c93b0;
+}
+
+.vn-briefing-section {
+  background: #f7fbff;
+  border: 1px solid #d2e8f2;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.vn-briefing-label {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #2c93b0;
+}
+
+.vn-briefing-text {
+  margin: 8px 0 0;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  font-weight: 700;
+  color: #4a4a4a;
+}
+
+.vn-briefing-btn {
+  align-self: flex-end;
+  border-radius: 20px;
+  padding: 10px 22px;
+}
+
 .vn-menu-bar {
   display: flex;
   justify-content: flex-end;
@@ -1371,5 +1413,11 @@ textarea {
     }
     .vn-input-row {
         flex-direction: column;
+    }
+    .vn-briefing-text {
+        font-size: 0.96rem;
+    }
+    .vn-briefing-btn {
+        width: 100%;
     }
 }

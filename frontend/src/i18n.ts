@@ -16,7 +16,7 @@ const dictionary = {
     askButton: '質問する',
     menuAsk: '質問',
     menuLog: '会話ログ',
-    menuNotebook: 'ノート',
+    menuNotebook: 'ヒント',
     menuGuess: '推理',
     qaPanelTitle: '質問と会話ログ',
     qaPanelHint: '質問はゲームマスター（GM）に送られ、会話ログを見ながら進められます。',

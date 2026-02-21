@@ -136,7 +136,6 @@ export default function App() {
   const [gameState, setGameState] = useState<GameStateResponse | null>(null);
   const [result, setResult] = useState<GuessResponse | null>(null);
   const [question, setQuestion] = useState('');
-  const [selectedQuestionTemplate, setSelectedQuestionTemplate] = useState('');
   const [guessForm, setGuessForm] = useState<GuessForm>(emptyGuess);
   const [reasoningStyle, setReasoningStyle] = useState<ReasoningStyle>('evidence');
   const [memo, setMemo] = useState('');
@@ -150,6 +149,7 @@ export default function App() {
   const text = useMemo(() => t(languageMode), [languageMode]);
   const questionTemplates = useMemo(() => questionTemplatesFor(languageMode), [languageMode]);
   const guessChoiceOptions = useMemo(() => guessChoiceOptionsFor(languageMode), [languageMode]);
+  const quickQuestionButtons = useMemo(() => questionTemplates.slice(0, 3), [questionTemplates]);
 
   useEffect(() => {
     if (!gameId) {
@@ -193,7 +193,6 @@ export default function App() {
       setLanguageMode(state.language_mode);
       setResult(null);
       setQuestion('');
-      setSelectedQuestionTemplate('');
       setReasoningStyle('evidence');
       setGuessForm({ ...emptyGuess, killer: state.characters[0]?.name ?? '' });
       setUiMode('dialogue');
@@ -209,7 +208,6 @@ export default function App() {
 
   const handleLanguageChange = async (mode: LanguageMode) => {
     setLanguageMode(mode);
-    setSelectedQuestionTemplate('');
     if (!gameId) {
       return;
     }
@@ -222,20 +220,19 @@ export default function App() {
     }
   };
 
-  const handleAsk = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!gameId || !question.trim() || showBriefing || gameState?.status !== 'PLAYING') {
+  const submitQuestion = async (value: string) => {
+    const trimmed = value.trim();
+    if (!gameId || !trimmed || showBriefing || gameState?.status !== 'PLAYING' || loading) {
       return;
     }
 
     setLoading(true);
     setErrorMessage('');
     try {
-      await askQuestion(gameId, question.trim());
+      await askQuestion(gameId, trimmed);
       const refreshed = await getGame(gameId);
       setGameState(refreshed);
       setQuestion('');
-      setSelectedQuestionTemplate('');
       setUiMode('qa');
       setIsQaLogExpanded(true);
     } catch (error) {
@@ -243,6 +240,11 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAsk = async (event: FormEvent) => {
+    event.preventDefault();
+    await submitQuestion(question);
   };
 
   const handleOpenGuess = () => {
@@ -297,7 +299,6 @@ export default function App() {
     setGameState(null);
     setResult(null);
     setQuestion('');
-    setSelectedQuestionTemplate('');
     setReasoningStyle('evidence');
     setGuessForm({ ...emptyGuess });
     setShowBriefing(false);
@@ -382,7 +383,7 @@ export default function App() {
       return '';
     }
     if (languageMode === 'ja') {
-      return `質問は合計${gameState.remaining_questions}回まで可能です。「質問」で聞き込み、「会話ログ」と「ノート」で情報を整理し、準備ができたら「推理」で結論を提出してください。`;
+      return `質問は合計${gameState.remaining_questions}回まで可能です。「質問」で聞き込み、「会話ログ」と「ヒント」で情報を整理し、準備ができたら「推理」で結論を提出してください。`;
     }
     return `You can ask up to ${gameState.remaining_questions} questions. Use "Ask" to interrogate, review "Chat Log" and "Notebook", then submit your theory from "Guess".`;
   }, [gameState, languageMode]);
@@ -628,14 +629,17 @@ export default function App() {
                         {text.askButton}
                       </button>
                     </div>
+                    <p className="field-label quick-question-label">{text.quickQuestionLabel}</p>
                     <div className="quick-option-row">
-                      {questionTemplates.slice(0, 3).map((template) => (
+                      {quickQuestionButtons.map((template) => (
                         <button
                           type="button"
                           key={template}
                           className="chip-btn"
+                          disabled={loading}
                           onClick={() => {
                             setQuestion(template);
+                            void submitQuestion(template);
                           }}
                         >
                           {template}

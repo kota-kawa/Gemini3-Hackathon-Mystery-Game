@@ -160,6 +160,7 @@ class UnlockedEvidenceResponse(BaseModel):
 
 class AskResponse(BaseModel):
     answer_text: str
+    follow_up_questions: list[str] = Field(default_factory=list)
     remaining_questions: int
     status: GameStatus
     unlocked_evidence: UnlockedEvidenceResponse | None = None
@@ -203,6 +204,7 @@ class MessageResponse(BaseModel):
     id: int
     question: str
     answer_text: str
+    follow_up_questions: list[str] = Field(default_factory=list)
     language_mode: LanguageMode
     created_at: datetime
 

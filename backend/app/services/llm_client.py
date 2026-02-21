@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from ..config import Settings
 from ..enums import LanguageMode
 from ..schemas import CaseFile, GuessRequest
+from .follow_up import append_follow_up_block, heuristic_follow_up_questions
 from .local_case_factory import build_local_case
 from .prompts import (
     build_answer_prompt,
@@ -79,6 +80,19 @@ class FakeLLMClient(LLMClient):
         history: list[dict],
         language_mode: LanguageMode,
     ) -> str:
+        follow_up_questions = heuristic_follow_up_questions(
+            case_data=case_data,
+            language_mode=language_mode,
+            history_count=len(history),
+        )
+
+        def with_followups(answer: str) -> str:
+            return append_follow_up_block(
+                answer_text=answer,
+                questions=follow_up_questions,
+                language_mode=language_mode,
+            )
+
         q = question.lower()
         killer = next(c for c in case_data.characters if c.id == case_data.killer_id)
         mentioned_character = next(
@@ -90,7 +104,7 @@ class FakeLLMClient(LLMClient):
             unclear = "Could you narrow it down to person, timeline, or evidence?"
             spoiler_block = "I cannot reveal the final answer yet, but I can share clues."
             if any(x in q for x in ["killer", "who did it", "solution"]):
-                return spoiler_block
+                return with_followups(spoiler_block)
             if mentioned_character is not None:
                 if mentioned_character.is_liar:
                     lied_before = any(
@@ -98,33 +112,39 @@ class FakeLLMClient(LLMClient):
                         for row in history
                     )
                     if not lied_before:
-                        return f"According to {mentioned_character.name}, they saw the victim speaking at 10:12 near the corridor."
-                    return f"{mentioned_character.name} now claims they mostly stayed near the elevator hall during the blackout."
+                        return with_followups(
+                            f"According to {mentioned_character.name}, they saw the victim speaking at 10:12 near the corridor."
+                        )
+                    return with_followups(
+                        f"{mentioned_character.name} now claims they mostly stayed near the elevator hall during the blackout."
+                    )
                 trait = mentioned_character.traits[0] if mentioned_character.traits else "No notable trait recorded."
-                return (
+                return with_followups(
                     f"{mentioned_character.name}'s stated alibi is: {mentioned_character.alibi} "
                     f"Their role is {mentioned_character.role}, and a noted trait is: {trait}"
                 )
             if any(x in q for x in ["evidence", "proof", "clue"]):
                 first = case_data.evidence[min(len(history), len(case_data.evidence) - 1)]
-                return f"One clue is '{first.name}'. {first.detail} It matters because {first.relevance}"
+                return with_followups(f"One clue is '{first.name}'. {first.detail} It matters because {first.relevance}")
             if any(x in q for x in ["timeline", "time", "when"]):
                 event = case_data.timeline[min(len(history), len(case_data.timeline) - 1)]
-                return f"At {event.time}, {event.event}"
+                return with_followups(f"At {event.time}, {event.event}")
             if any(x in q for x in ["motive", "why"]):
-                return "The motive likely ties to hidden financial pressure and a silence attempt."
+                return with_followups("The motive likely ties to hidden financial pressure and a silence attempt.")
             if any(x in q for x in ["method", "how"]):
-                return "The method likely involved delayed gas release rather than direct violence."
+                return with_followups("The method likely involved delayed gas release rather than direct violence.")
             if any(x in q for x in ["alibi"]):
-                return f"Check who benefited from the blackout window and compare with {killer.name}'s movements."
+                return with_followups(
+                    f"Check who benefited from the blackout window and compare with {killer.name}'s movements."
+                )
             if len(question.strip()) < 3:
-                return unclear
-            return "Focus on the blackout window, latch behavior, and witness timing conflicts."
+                return with_followups(unclear)
+            return with_followups("Focus on the blackout window, latch behavior, and witness timing conflicts.")
 
         unclear = "人物・時系列・証拠のどれを知りたいか絞ってください。"
         spoiler_block = "真相の断定はまだできませんが、手掛かりは共有できます。"
         if any(x in q for x in ["犯人", "真相", "答え"]):
-            return spoiler_block
+            return with_followups(spoiler_block)
         if mentioned_character is not None:
             if mentioned_character.is_liar:
                 lied_before = any(
@@ -132,28 +152,28 @@ class FakeLLMClient(LLMClient):
                     for row in history
                 )
                 if not lied_before:
-                    return f"{mentioned_character.name}の証言では、被害者は10:12ごろ廊下で話していたそうです。"
-                return f"{mentioned_character.name}は、停電中はほぼエレベーターホールにいたと言っています。"
+                    return with_followups(f"{mentioned_character.name}の証言では、被害者は10:12ごろ廊下で話していたそうです。")
+                return with_followups(f"{mentioned_character.name}は、停電中はほぼエレベーターホールにいたと言っています。")
             trait = mentioned_character.traits[0] if mentioned_character.traits else "特筆すべき特徴は記録されていません。"
-            return (
+            return with_followups(
                 f"{mentioned_character.name}のアリバイ主張は「{mentioned_character.alibi}」です。"
                 f"役割は{mentioned_character.role}で、特徴としては「{trait}」が挙げられます。"
             )
         if any(x in q for x in ["証拠", "手掛かり", "手がかり"]):
             first = case_data.evidence[min(len(history), len(case_data.evidence) - 1)]
-            return f"手掛かりは『{first.name}』です。{first.detail} 重要性は、{first.relevance}"
+            return with_followups(f"手掛かりは『{first.name}』です。{first.detail} 重要性は、{first.relevance}")
         if any(x in q for x in ["時系列", "時間", "いつ"]):
             event = case_data.timeline[min(len(history), len(case_data.timeline) - 1)]
-            return f"{event.time}の時点で、{event.event}"
+            return with_followups(f"{event.time}の時点で、{event.event}")
         if any(x in q for x in ["動機", "なぜ"]):
-            return "動機は金銭面の圧力と、発覚回避の線が濃いです。"
+            return with_followups("動機は金銭面の圧力と、発覚回避の線が濃いです。")
         if any(x in q for x in ["手口", "方法", "どうやって"]):
-            return "直接的な暴行より、遅延作動型の仕掛けが疑われます。"
+            return with_followups("直接的な暴行より、遅延作動型の仕掛けが疑われます。")
         if any(x in q for x in ["アリバイ"]):
-            return f"停電の空白時間で得をする人物と、{killer.name}の移動を照合してください。"
+            return with_followups(f"停電の空白時間で得をする人物と、{killer.name}の移動を照合してください。")
         if len(question.strip()) < 3:
-            return unclear
-        return "停電のタイミング、ラッチの挙動、証言時刻の食い違いを重点的に見てください。"
+            return with_followups(unclear)
+        return with_followups("停電のタイミング、ラッチの挙動、証言時刻の食い違いを重点的に見てください。")
 
     def contradiction_check(
         self,

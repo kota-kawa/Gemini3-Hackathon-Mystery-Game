@@ -63,6 +63,43 @@ function questionTemplatesFor(mode: LanguageMode): string[] {
   ];
 }
 
+function quickQuestionDefaultsFor(mode: LanguageMode): string[] {
+  return questionTemplatesFor(mode).slice(0, 3);
+}
+
+function normalizeSuggestedQuestions(candidates: string[] | undefined): string[] {
+  const cleaned: string[] = [];
+  for (const candidate of candidates ?? []) {
+    const trimmed = candidate.trim();
+    if (!trimmed || cleaned.includes(trimmed)) {
+      continue;
+    }
+    cleaned.push(trimmed);
+    if (cleaned.length >= 3) {
+      break;
+    }
+  }
+  return cleaned.slice(0, 3);
+}
+
+function mergeQuestionButtons(base: string[], dynamic: string[]): string[] {
+  const merged = [...base];
+  for (const question of dynamic) {
+    if (!merged.includes(question)) {
+      merged.push(question);
+    }
+  }
+  return merged;
+}
+
+function latestSuggestedQuestions(state: GameStateResponse | null): string[] {
+  if (!state || state.messages.length === 0) {
+    return [];
+  }
+  const latest = state.messages[state.messages.length - 1];
+  return latest.follow_up_questions ?? [];
+}
+
 function guessChoiceOptionsFor(mode: LanguageMode): { motive: string[]; method: string[]; trick: string[] } {
   if (mode === 'ja') {
     return {
@@ -136,6 +173,7 @@ export default function App() {
   const [gameState, setGameState] = useState<GameStateResponse | null>(null);
   const [result, setResult] = useState<GuessResponse | null>(null);
   const [question, setQuestion] = useState('');
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [guessForm, setGuessForm] = useState<GuessForm>(emptyGuess);
   const [reasoningStyle, setReasoningStyle] = useState<ReasoningStyle>('evidence');
   const [memo, setMemo] = useState('');
@@ -147,9 +185,12 @@ export default function App() {
   const qaLogRef = useRef<HTMLDivElement>(null);
 
   const text = useMemo(() => t(languageMode), [languageMode]);
-  const questionTemplates = useMemo(() => questionTemplatesFor(languageMode), [languageMode]);
+  const baseQuickQuestions = useMemo(() => quickQuestionDefaultsFor(languageMode), [languageMode]);
+  const displayQuestionButtons = useMemo(
+    () => mergeQuestionButtons(baseQuickQuestions, suggestedQuestions),
+    [baseQuickQuestions, suggestedQuestions],
+  );
   const guessChoiceOptions = useMemo(() => guessChoiceOptionsFor(languageMode), [languageMode]);
-  const quickQuestionButtons = useMemo(() => questionTemplates.slice(0, 3), [questionTemplates]);
 
   useEffect(() => {
     if (!gameId) {
@@ -193,6 +234,7 @@ export default function App() {
       setLanguageMode(state.language_mode);
       setResult(null);
       setQuestion('');
+      setSuggestedQuestions(normalizeSuggestedQuestions(latestSuggestedQuestions(state)));
       setReasoningStyle('evidence');
       setGuessForm({ ...emptyGuess, killer: state.characters[0]?.name ?? '' });
       setUiMode('dialogue');
@@ -208,6 +250,7 @@ export default function App() {
 
   const handleLanguageChange = async (mode: LanguageMode) => {
     setLanguageMode(mode);
+    setSuggestedQuestions([]);
     if (!gameId) {
       return;
     }
@@ -215,6 +258,7 @@ export default function App() {
       await patchLanguage(gameId, mode);
       const refreshed = await getGame(gameId);
       setGameState(refreshed);
+      setSuggestedQuestions(normalizeSuggestedQuestions(latestSuggestedQuestions(refreshed)));
     } catch (error) {
       setErrorMessage(resolveError(error));
     }
@@ -229,9 +273,11 @@ export default function App() {
     setLoading(true);
     setErrorMessage('');
     try {
-      await askQuestion(gameId, trimmed);
+      const askResult = await askQuestion(gameId, trimmed);
+      setSuggestedQuestions(normalizeSuggestedQuestions(askResult.follow_up_questions));
       const refreshed = await getGame(gameId);
       setGameState(refreshed);
+      setSuggestedQuestions(normalizeSuggestedQuestions(latestSuggestedQuestions(refreshed)));
       setQuestion('');
       setUiMode('qa');
       setIsQaLogExpanded(true);
@@ -299,6 +345,7 @@ export default function App() {
     setGameState(null);
     setResult(null);
     setQuestion('');
+    setSuggestedQuestions([]);
     setReasoningStyle('evidence');
     setGuessForm({ ...emptyGuess });
     setShowBriefing(false);
@@ -631,7 +678,7 @@ export default function App() {
                     </div>
                     <p className="field-label quick-question-label">{text.quickQuestionLabel}</p>
                     <div className="quick-option-row">
-                      {quickQuestionButtons.map((template) => (
+                      {displayQuestionButtons.map((template) => (
                         <button
                           type="button"
                           key={template}

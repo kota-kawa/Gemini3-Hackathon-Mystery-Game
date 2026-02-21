@@ -39,6 +39,8 @@ def test_answer_prompt_includes_current_date_line() -> None:
         now=fixed_now,
     )
     assert "Current date and weekday: 2026-02-21 (Saturday)." in prompt
+    assert "<FOLLOW_UP_QUESTIONS>" in prompt
+    assert "</FOLLOW_UP_QUESTIONS>" in prompt
 
 
 def test_contradiction_and_scoring_prompts_include_current_date_line() -> None:

@@ -70,10 +70,13 @@ def test_full_flow_with_language_switch(client: TestClient) -> None:
     ask_data = ask_res.json()
     assert ask_data["remaining_questions"] == create_data["remaining_questions"] - 1
     assert isinstance(ask_data["answer_text"], str) and len(ask_data["answer_text"]) > 0
+    assert isinstance(ask_data["follow_up_questions"], list)
+    assert len(ask_data["follow_up_questions"]) == 3
 
     state_res = client.get(f"/api/game/{game_id}")
     assert state_res.status_code == 200
     state_data = state_res.json()
+    assert len(state_data["messages"][0]["follow_up_questions"]) == 3
     suspect = state_data["characters"][0]["name"]
 
     ready_res = client.post(f"/api/game/{game_id}/ready-to-guess")
@@ -125,6 +128,7 @@ def test_ask_character_info_without_target_field(client: TestClient) -> None:
     )
     assert ask_res.status_code == 200
     assert character_name in ask_res.json()["answer_text"]
+    assert len(ask_res.json()["follow_up_questions"]) == 3
 
 
 def test_guess_invalid_state_returns_409(client: TestClient) -> None:
@@ -190,6 +194,7 @@ def test_ask_succeeds_when_contradiction_check_fails(client: TestClient) -> None
     )
     assert ask_res.status_code == 200
     assert "停電の空白時間" in ask_res.json()["answer_text"]
+    assert len(ask_res.json()["follow_up_questions"]) == 3
 
     app.dependency_overrides = {}
 
@@ -218,6 +223,7 @@ def test_gemini_provider_falls_back_to_fake(client: TestClient, monkeypatch: pyt
     )
     assert ask_res.status_code == 200
     assert isinstance(ask_res.json()["answer_text"], str)
+    assert len(ask_res.json()["follow_up_questions"]) == 3
 
 
 def test_gemini_failure_returns_502(client: TestClient) -> None:

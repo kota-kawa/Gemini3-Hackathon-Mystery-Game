@@ -22,6 +22,7 @@ from ..schemas import (
     PatchLanguageResponse,
     UnlockedEvidenceResponse,
 )
+from .follow_up import append_follow_up_block, heuristic_follow_up_questions, split_answer_and_follow_up_questions
 from .llm_client import LLMClient, LLMError
 from .scoring_service import ScoringService
 
@@ -82,15 +83,23 @@ class GameService:
             )
 
         case_obj = self._case_of_game(game)
+        language_mode = LanguageMode(game.language_mode)
 
-        history = [{"question": message.question, "answer": message.answer_text} for message in game.messages]
+        history: list[dict[str, str]] = []
+        for message in game.messages:
+            clean_answer, _ = split_answer_and_follow_up_questions(
+                message.answer_text,
+                language_mode=LanguageMode(message.language_mode),
+                with_default=False,
+            )
+            history.append({"question": message.question, "answer": clean_answer})
 
         try:
-            answer = self.llm_client.answer_question(
+            raw_answer = self.llm_client.answer_question(
                 case_data=case_obj,
                 question=request.question,
                 history=history,
-                language_mode=LanguageMode(game.language_mode),
+                language_mode=language_mode,
             )
         except LLMError as exc:
             raise gemini_error(
@@ -98,12 +107,24 @@ class GameService:
                 detail={"cause": str(exc)},
             ) from exc
 
+        answer, follow_up_questions = split_answer_and_follow_up_questions(
+            raw_answer,
+            language_mode=language_mode,
+            with_default=False,
+        )
+        if not follow_up_questions:
+            follow_up_questions = heuristic_follow_up_questions(
+                case_data=case_obj,
+                language_mode=language_mode,
+                history_count=len(history),
+            )
+
         try:
             contradiction = self.llm_client.contradiction_check(
                 case_data=case_obj,
                 question=request.question,
                 answer=answer,
-                language_mode=LanguageMode(game.language_mode),
+                language_mode=language_mode,
             )
         except LLMError as exc:
             logger.warning("Contradiction check failed; using original answer without rewrite: %s", exc)
@@ -114,7 +135,20 @@ class GameService:
 
         fixed_answer = contradiction.get("fixed_answer")
         if contradiction.get("contradiction") and fixed_answer:
-            answer = str(fixed_answer)
+            rewritten_answer, rewritten_followups = split_answer_and_follow_up_questions(
+                str(fixed_answer),
+                language_mode=language_mode,
+                with_default=False,
+            )
+            answer = rewritten_answer
+            if rewritten_followups:
+                follow_up_questions = rewritten_followups
+            elif not follow_up_questions:
+                follow_up_questions = heuristic_follow_up_questions(
+                    case_data=case_obj,
+                    language_mode=language_mode,
+                    history_count=len(history),
+                )
 
         game.remaining_questions = max(0, game.remaining_questions - 1)
         if game.remaining_questions == 0:
@@ -125,7 +159,11 @@ class GameService:
         message = Message(
             game_id=game.id,
             question=request.question,
-            answer_text=answer,
+            answer_text=append_follow_up_block(
+                answer,
+                follow_up_questions,
+                language_mode=language_mode,
+            ),
             language_mode=game.language_mode,
         )
         self.db.add(message)
@@ -134,6 +172,7 @@ class GameService:
 
         return {
             "answer_text": answer,
+            "follow_up_questions": follow_up_questions,
             "remaining_questions": game.remaining_questions,
             "status": GameStatus(game.status),
             "unlocked_evidence": unlocked,
@@ -218,7 +257,23 @@ class GameService:
             for item in case_obj.evidence[: game.unlocked_evidence_count]
         ]
 
-        messages = [MessageResponse.model_validate(msg) for msg in sorted(game.messages, key=lambda m: m.created_at)]
+        messages: list[MessageResponse] = []
+        for message in sorted(game.messages, key=lambda m: m.created_at):
+            clean_answer, follow_up_questions = split_answer_and_follow_up_questions(
+                message.answer_text,
+                language_mode=LanguageMode(message.language_mode),
+                with_default=False,
+            )
+            messages.append(
+                MessageResponse(
+                    id=message.id,
+                    question=message.question,
+                    answer_text=clean_answer,
+                    follow_up_questions=follow_up_questions,
+                    language_mode=LanguageMode(message.language_mode),
+                    created_at=message.created_at,
+                )
+            )
 
         return GameStateResponse(
             game_id=game.id,

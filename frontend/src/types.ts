@@ -28,6 +28,7 @@ export interface Message {
   id: number;
   question: string;
   answer_text: string;
+  follow_up_questions: string[];
   language_mode: LanguageMode;
   created_at: string;
 }
@@ -43,6 +44,7 @@ export interface NewGameResponse {
 
 export interface AskResponse {
   answer_text: string;
+  follow_up_questions: string[];
   remaining_questions: number;
   status: GameStatus;
   unlocked_evidence?: UnlockedEvidence | null;

@@ -1,36 +1,44 @@
-# 渋谷ストリーム密室事件（AI GM 即興推理ゲーム）
+# 🔍 Shibuya Stream Locked-Room Mystery
 
-要件定義書に基づくMVP実装です。`backend`(FastAPI) と `frontend`(Vite + React) で構成されています。
+> **An AI-powered detective game where Gemini acts as your Game Master**
 
-## Docker Compose（推奨）
-コード変更が即時反映される開発モードです（フロント/バックともホットリロード有効）。
+![Game Type](https://img.shields.io/badge/Game-Mystery%20Detective-purple)
+![AI](https://img.shields.io/badge/AI-Gemini%203-blue)
+![Stack](https://img.shields.io/badge/Stack-FastAPI%20%2B%20React-green)
+
+## 🎮 What is this?
+
+This is an **interactive mystery-solving game** where an AI (Google Gemini) plays the role of Game Master (GM). Each playthrough generates a unique locked-room murder case set in Shibuya Stream. Question witnesses, gather evidence, and deduce the culprit before your questions run out!
+
+### ✨ Key Features
+
+| Feature | Description |
+|---------|-------------|
+| 🎲 **Dynamic Case Generation** | Every game creates a new mystery with unique characters, motives, and tricks |
+| 🗣️ **AI Game Master** | Ask any question - the AI responds consistently based on the hidden case data |
+| 🤥 **Lying NPC** | One character always lies - spot the inconsistencies! |
+| ⏱️ **Limited Questions** | Solve the case within 12 questions |
+| 📊 **Detailed Scoring** | Get graded (S/A/B/C) with feedback on your deduction's weaknesses |
+| 🌐 **Bilingual** | Play in English or Japanese |
+
+## 🚀 Quick Start
+
+### Using Docker (Recommended)
 
 ```bash
 docker compose up --build
 ```
 
-- フロントエンド: `http://localhost:5173`
-- バックエンド: `http://localhost:8000`
-- 停止: `Ctrl + C`
-- バックグラウンド起動: `docker compose up --build -d`
-- 完全停止: `docker compose down`
+- **Frontend**: http://localhost:5173
+- **Backend**: http://localhost:8000
+- **Stop**: `Ctrl + C` or `docker compose down`
 
-## 実装済み機能
-- 事件生成（構造化JSON + Pydantic検証、失敗時1回リトライ）
-- 質問応答（事件整合ベース、矛盾チェック付き）
-- 質問回数制限（デフォルト12）
-- 推理提出と採点（100点満点、S/A/B/C）
-- 嘘つきNPCを含む事件生成
-- 推理の弱点トップ3
-- 言語モード切替（`ja` / `en`）
-- 共通エラー契約（`error_code`, `message`, `retryable`, `detail`）
+### Manual Setup
 
-## ディレクトリ
-- `backend/app`: API本体
-- `backend/tests`: APIテスト
-- `frontend/src`: UI実装
+<details>
+<summary>Click to expand</summary>
 
-## バックエンド起動
+**Backend:**
 ```bash
 cd backend
 python3 -m venv .venv
@@ -39,41 +47,197 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-## フロントエンド起動
+**Frontend:**
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-`VITE_API_BASE_URL` を設定しない場合、`http://localhost:8000` を参照します。
+</details>
 
-## 環境変数
-- `LLM_PROVIDER`: `fake` or `gemini`（デフォルト: `fake`）
-- `GEMINI_API_KEY`: Gemini利用時に必須
-- `GEMINI_MODEL`: デフォルト `gemini-3-flash-preview`
-- `GEMINI_API_VERSION`: デフォルト `v1beta`
-- `GEMINI_THINKING_LEVEL`: `minimal|low|medium|high`（デフォルト `minimal`）
-- `GEMINI_RETRY_DELAY_SEC`: リトライ初期待機秒（デフォルト `0.8`）
-- `GEMINI_RETRY_MAX_DELAY_SEC`: リトライ最大待機秒（デフォルト `20`）
-- `GEMINI_MAX_ATTEMPTS`: 1リクエストあたりの最大試行回数（デフォルト `5`）
-- `GEMINI_FALLBACK_TO_FAKE`: デフォルト `false`（`true`のときのみGemini障害時に`fake`へフォールバック）
-- `DATABASE_URL`: デフォルト `sqlite:///./mystery_game.db`
-- `MAX_QUESTIONS`: デフォルト `12`
-- `VITE_API_BASE_URL`: デフォルト `http://localhost:8000`
+## ⚙️ Configuration
 
-## Gemini利用
-`LLM_PROVIDER=gemini` を指定すると、事件生成・応答・矛盾チェック・採点でGemini APIを使用します。
-バックエンドは公式 `google-genai` SDK で Gemini API を呼び出し、`429/5xx` 系エラー時は指数バックオフで再試行します。
-低遅延で返す場合は `GEMINI_THINKING_LEVEL=minimal` を使用します（Gemini 3 の推奨設定）。
-`GEMINI_FALLBACK_TO_FAKE=false`（デフォルト）ではGeminiが最終的に失敗した場合 `502 GEMINI_UNAVAILABLE` を返します。
+### Environment Variables
 
-## APIテスト
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LLM_PROVIDER` | `fake` | `fake` (offline demo) or `gemini` (real AI) |
+| `GEMINI_API_KEY` | - | Required when using Gemini |
+| `GEMINI_MODEL` | `gemini-3-flash-preview` | Gemini model to use |
+| `MAX_QUESTIONS` | `12` | Questions allowed per game |
+| `DATABASE_URL` | `sqlite:///./mystery_game.db` | Database connection |
+
+<details>
+<summary>All environment variables</summary>
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LLM_PROVIDER` | `fake` | `fake` or `gemini` |
+| `GEMINI_API_KEY` | - | Required for Gemini |
+| `GEMINI_MODEL` | `gemini-3-flash-preview` | Model name |
+| `GEMINI_API_VERSION` | `v1beta` | API version |
+| `GEMINI_THINKING_LEVEL` | `minimal` | `minimal\|low\|medium\|high` |
+| `GEMINI_RETRY_DELAY_SEC` | `0.8` | Initial retry delay |
+| `GEMINI_RETRY_MAX_DELAY_SEC` | `20` | Max retry delay |
+| `GEMINI_MAX_ATTEMPTS` | `5` | Max attempts per request |
+| `GEMINI_FALLBACK_TO_FAKE` | `false` | Fallback to fake on failure |
+| `DATABASE_URL` | `sqlite:///./mystery_game.db` | Database URL |
+| `MAX_QUESTIONS` | `12` | Questions per game |
+| `VITE_API_BASE_URL` | `http://localhost:8000` | API URL for frontend |
+
+</details>
+
+## 🏗️ Project Structure
+
+```
+.
+├── backend/
+│   ├── app/          # FastAPI application
+│   └── tests/        # API tests
+├── frontend/
+│   └── src/          # React application
+└── docker-compose.yml
+```
+
+## 🧪 Running Tests
+
 ```bash
 cd backend
 pytest -q
 ```
 
-## 補足
-- 要件上のPostgreSQLにも対応できるよう、`DATABASE_URL`差し替えで動作します。
-- デモ運用安定性のため、オフラインでも動く`fake`プロバイダを同梱しています。
+## 📖 How to Play
+
+1. **Start a new case** - Click "Generate New Case" on the title screen
+2. **Read the intro** - Learn about the crime scene and victim
+3. **Ask questions** - Interrogate witnesses and examine evidence (12 questions max)
+4. **Watch for lies** - One NPC always lies, but evidence can expose them
+5. **Submit your deduction** - Name the killer, motive, method, and trick
+6. **Get your score** - See how close you were and learn the truth!
+
+---
+
+<details>
+<summary>🇯🇵 日本語版 README</summary>
+
+# 🔍 渋谷ストリーム密室事件
+
+> **AIがゲームマスターを務める即興推理ゲーム**
+
+## 🎮 これは何？
+
+**Google Gemini** がゲームマスター（GM）となり、渋谷ストリームを舞台にした密室殺人事件を即興で進行する **インタラクティブ推理ゲーム** です。プレイするたびに新しい事件が生成され、証人への質問、証拠の収集、推理の提出を通じて犯人を当てます。
+
+### ✨ 主な機能
+
+| 機能 | 説明 |
+|------|------|
+| 🎲 **動的事件生成** | 毎回新しい事件・人物・動機・トリックが生成される |
+| 🗣️ **AI ゲームマスター** | どんな質問にも事件データに基づいて一貫した回答 |
+| 🤥 **嘘つきNPC** | 1人は必ず嘘をつく - 矛盾を見抜け！ |
+| ⏱️ **質問回数制限** | 12回の質問で事件を解決せよ |
+| 📊 **詳細な採点** | S/A/B/Cのランクと推理の弱点トップ3 |
+| 🌐 **日英対応** | 日本語・英語の切り替え可能 |
+
+## 🚀 クイックスタート
+
+### Docker を使う（推奨）
+
+```bash
+docker compose up --build
+```
+
+- **フロントエンド**: http://localhost:5173
+- **バックエンド**: http://localhost:8000
+- **停止**: `Ctrl + C` または `docker compose down`
+
+### 手動セットアップ
+
+<details>
+<summary>クリックで展開</summary>
+
+**バックエンド:**
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+**フロントエンド:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+</details>
+
+## ⚙️ 設定
+
+### 環境変数
+
+| 変数 | デフォルト | 説明 |
+|------|---------|------|
+| `LLM_PROVIDER` | `fake` | `fake`（オフラインデモ）または `gemini`（本番AI） |
+| `GEMINI_API_KEY` | - | Gemini使用時に必須 |
+| `GEMINI_MODEL` | `gemini-3-flash-preview` | 使用するGeminiモデル |
+| `MAX_QUESTIONS` | `12` | ゲームあたりの質問回数 |
+| `DATABASE_URL` | `sqlite:///./mystery_game.db` | データベース接続先 |
+
+<details>
+<summary>全環境変数一覧</summary>
+
+| 変数 | デフォルト | 説明 |
+|------|---------|------|
+| `LLM_PROVIDER` | `fake` | `fake` または `gemini` |
+| `GEMINI_API_KEY` | - | Gemini使用時に必須 |
+| `GEMINI_MODEL` | `gemini-3-flash-preview` | モデル名 |
+| `GEMINI_API_VERSION` | `v1beta` | APIバージョン |
+| `GEMINI_THINKING_LEVEL` | `minimal` | `minimal\|low\|medium\|high` |
+| `GEMINI_RETRY_DELAY_SEC` | `0.8` | リトライ初期待機秒 |
+| `GEMINI_RETRY_MAX_DELAY_SEC` | `20` | リトライ最大待機秒 |
+| `GEMINI_MAX_ATTEMPTS` | `5` | 1リクエストの最大試行回数 |
+| `GEMINI_FALLBACK_TO_FAKE` | `false` | 失敗時にfakeへフォールバック |
+| `DATABASE_URL` | `sqlite:///./mystery_game.db` | データベースURL |
+| `MAX_QUESTIONS` | `12` | ゲームあたりの質問回数 |
+| `VITE_API_BASE_URL` | `http://localhost:8000` | フロントエンド用API URL |
+
+</details>
+
+## 🏗️ プロジェクト構成
+
+```
+.
+├── backend/
+│   ├── app/          # FastAPI アプリケーション
+│   └── tests/        # APIテスト
+├── frontend/
+│   └── src/          # React アプリケーション
+└── docker-compose.yml
+```
+
+## 🧪 テスト実行
+
+```bash
+cd backend
+pytest -q
+```
+
+## 📖 遊び方
+
+1. **新しい事件を生成** - タイトル画面で「新しい事件を生成」をクリック
+2. **導入を読む** - 事件現場と被害者について把握
+3. **質問する** - 証人に聞き込み、証拠を調べる（最大12回）
+4. **嘘を見抜く** - 1人は必ず嘘をつく、証拠で暴け！
+5. **推理を提出** - 犯人・動機・手口・トリックを回答
+6. **採点を確認** - 正解との比較と真相を確認！
+
+## 📝 補足
+
+- PostgreSQLにも対応（`DATABASE_URL`を変更するだけ）
+- オフラインデモ用に`fake`プロバイダを同梱
+
+</details>

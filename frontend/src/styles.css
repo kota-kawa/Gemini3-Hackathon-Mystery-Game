@@ -1230,11 +1230,18 @@ textarea {
 
 .vn-menu-bar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   padding: 12px 24px;
   gap: 12px;
   border-top: 1px solid rgba(138, 100, 180, 0.25);
   background: rgba(12, 10, 18, 0.38);
+}
+
+.vn-menu-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .vn-menu-btn {
@@ -1348,6 +1355,26 @@ textarea {
   overflow: hidden;
 }
 
+.vn-case-overlay-content {
+  max-width: 860px;
+}
+
+.vn-case-summary-panel {
+  margin-top: 12px;
+  border: 1px solid rgba(138, 100, 180, 0.3);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  background: rgba(31, 27, 44, 0.86);
+}
+
+.vn-case-summary-text {
+  margin: 0;
+  color: rgba(232, 228, 240, 0.95);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.75;
+}
+
 .guessing-overlay .vn-overlay-content {
   overflow-y: auto;
 }
@@ -1435,6 +1462,11 @@ textarea {
         justify-content: center;
         padding-bottom: 16px;
     }
+    .vn-menu-group {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
     .vn-textbox {
         width: 95%;
         margin-bottom: 16px;
@@ -1444,6 +1476,9 @@ textarea {
     }
     .vn-briefing-text {
         font-size: 0.96rem;
+    }
+    .vn-case-summary-text {
+        font-size: 0.95rem;
     }
     .vn-briefing-btn {
         width: 100%;

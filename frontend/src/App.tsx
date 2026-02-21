@@ -15,7 +15,7 @@ import type { GameStateResponse, GuessResponse, LanguageMode } from './types';
 
 type Screen = 'title' | 'game' | 'result';
 type ReasoningStyle = 'evidence' | 'timeline' | 'elimination';
-type UiMode = 'dialogue' | 'input' | 'log' | 'notebook' | 'guessing';
+type UiMode = 'dialogue' | 'input' | 'log' | 'notebook' | 'case' | 'guessing';
 
 interface GuessForm {
   killer: string;
@@ -569,6 +569,16 @@ export default function App() {
 
             {/* Menu Bar */}
             <div className="vn-menu-bar">
+                <div className="vn-menu-group">
+                  <button
+                    className="vn-menu-btn"
+                    onClick={() => setUiMode('case')}
+                    disabled={showBriefing || uiMode === 'guessing'}
+                  >
+                    {text.briefingCaseLabel}
+                  </button>
+                </div>
+                <div className="vn-menu-group">
                 <button
                   className="vn-menu-btn"
                   onClick={() => setUiMode('input')}
@@ -589,10 +599,25 @@ export default function App() {
                 >
                     {text.menuGuess}
                 </button>
+                </div>
             </div>
           </div>
 
           {/* Overlays */}
+          {uiMode === 'case' && (
+            <div className="vn-overlay">
+                <div className="vn-overlay-content vn-case-overlay-content">
+                    <div className="row-between">
+                        <h2>{text.briefingCaseLabel}</h2>
+                        <button className="secondary-btn" onClick={() => setUiMode('dialogue')}>{text.close}</button>
+                    </div>
+                    <div className="vn-case-summary-panel">
+                      <p className="vn-case-summary-text">{briefingCaseText}</p>
+                    </div>
+                </div>
+            </div>
+          )}
+
           {uiMode === 'log' && (
             <div className="vn-overlay">
                 <div className="vn-overlay-content">

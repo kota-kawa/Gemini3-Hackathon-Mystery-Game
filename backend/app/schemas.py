@@ -190,6 +190,7 @@ class GuessResponse(BaseModel):
     contradictions: list[str]
     weaknesses_top3: list[str]
     solution_summary: str
+    result_background_image_url: str | None = None
 
 
 class ConversationSummaryResponse(BaseModel):
@@ -226,6 +227,7 @@ class GameStateResponse(BaseModel):
     remaining_questions: int
     language_mode: LanguageMode
     background_image_url: str | None = None
+    result_background_image_url: str | None = None
     case_summary: CaseSummaryResponse
     characters: list[CharacterPublicResponse]
     unlocked_evidence: list[UnlockedEvidenceResponse]

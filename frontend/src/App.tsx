@@ -186,6 +186,10 @@ function buildConversationSummaryLines(
 }
 
 function resolveBackgroundImageUrl(state: GameStateResponse | null): string | null {
+  const resultPath = state?.result_background_image_url?.trim();
+  if (state?.status === 'RESULT' && resultPath) {
+    return toApiUrl(resultPath);
+  }
   const path = state?.background_image_url?.trim();
   if (!path) {
     return null;
@@ -374,6 +378,9 @@ export default function App() {
       }
       const response = await submitGuess(gameId, guessForm);
       setResult(response);
+      if (response.result_background_image_url?.trim()) {
+        setBackgroundImageUrl(toApiUrl(response.result_background_image_url));
+      }
       const refreshed = await getGame(gameId);
       setGameState(refreshed);
       setScreen('result');

@@ -66,6 +66,7 @@ export interface GuessResponse {
   contradictions: string[];
   weaknesses_top3: string[];
   solution_summary: string;
+  result_background_image_url?: string | null;
 }
 
 export interface ConversationSummaryResponse {
@@ -82,6 +83,7 @@ export interface GameStateResponse {
   remaining_questions: number;
   language_mode: LanguageMode;
   background_image_url?: string | null;
+  result_background_image_url?: string | null;
   case_summary: CaseSummary;
   characters: CharacterPublic[];
   unlocked_evidence: UnlockedEvidence[];

@@ -35,6 +35,12 @@ MEDIA_TYPE_TO_EXTENSION = {
     "image/jpeg": "jpg",
     "image/webp": "webp",
 }
+ASSET_KIND_STORY = "story"
+ASSET_KIND_RESULT = "result"
+ASSET_ENDPOINT_BY_KIND = {
+    ASSET_KIND_STORY: "background",
+    ASSET_KIND_RESULT: "result-background",
+}
 
 
 class GameService:
@@ -301,6 +307,15 @@ class GameService:
 
         self.db.commit()
 
+        result_background_image_url = self._generate_result_background(
+            game_id=game.id,
+            case_obj=case_obj,
+            language_mode=LanguageMode(game.language_mode),
+            score=int(scored["score"]),
+            grade=str(scored["grade"]),
+            matches=scored["matches"],
+        )
+
         return {
             "score": int(scored["score"]),
             "grade": scored["grade"],
@@ -309,6 +324,7 @@ class GameService:
             "contradictions": scored["contradictions"],
             "weaknesses_top3": scored["weaknesses_top3"],
             "solution_summary": scored["solution_summary"],
+            "result_background_image_url": result_background_image_url,
         }
 
     def patch_language(self, game_id: str, language_mode: LanguageMode) -> PatchLanguageResponse:
@@ -352,7 +368,8 @@ class GameService:
             status=GameStatus(game.status),
             remaining_questions=game.remaining_questions,
             language_mode=LanguageMode(game.language_mode),
-            background_image_url=self._background_image_url(game.id),
+            background_image_url=self._story_background_image_url(game.id),
+            result_background_image_url=self._result_background_image_url(game.id),
             case_summary=self._case_summary(case_obj),
             characters=self._public_characters(case_obj),
             unlocked_evidence=unlocked,
@@ -360,8 +377,14 @@ class GameService:
         )
 
     def get_background_asset(self, game_id: str) -> tuple[Path, str]:
+        return self._get_background_asset_by_kind(game_id=game_id, asset_kind=ASSET_KIND_STORY)
+
+    def get_result_background_asset(self, game_id: str) -> tuple[Path, str]:
+        return self._get_background_asset_by_kind(game_id=game_id, asset_kind=ASSET_KIND_RESULT)
+
+    def _get_background_asset_by_kind(self, *, game_id: str, asset_kind: str) -> tuple[Path, str]:
         _ = self._get_game_or_404(game_id)
-        meta = self._load_background_meta(game_id)
+        meta = self._load_background_meta(game_id=game_id, asset_kind=asset_kind)
         if not meta:
             raise not_found("背景画像が見つかりません。", detail={"game_id": game_id})
 
@@ -395,11 +418,18 @@ class GameService:
             path = Path.cwd() / path
         return path
 
-    def _background_meta_path(self, game_id: str) -> Path:
+    def _background_meta_path(self, *, game_id: str, asset_kind: str) -> Path:
+        return self._background_dir() / f"{game_id}.{asset_kind}.json"
+
+    def _legacy_story_meta_path(self, game_id: str) -> Path:
         return self._background_dir() / f"{game_id}.json"
 
-    def _load_background_meta(self, game_id: str) -> dict[str, str] | None:
-        meta_path = self._background_meta_path(game_id)
+    def _load_background_meta(self, *, game_id: str, asset_kind: str) -> dict[str, str] | None:
+        meta_path = self._background_meta_path(game_id=game_id, asset_kind=asset_kind)
+        if asset_kind == ASSET_KIND_STORY and not meta_path.is_file():
+            legacy = self._legacy_story_meta_path(game_id)
+            if legacy.is_file():
+                meta_path = legacy
         if not meta_path.is_file():
             return None
 
@@ -416,8 +446,12 @@ class GameService:
             "media_type": str(data.get("media_type", "")),
         }
 
-    def _background_image_url(self, game_id: str) -> str | None:
-        meta = self._load_background_meta(game_id)
+    def _asset_endpoint_path(self, game_id: str, asset_kind: str) -> str:
+        endpoint = ASSET_ENDPOINT_BY_KIND.get(asset_kind, "background")
+        return f"/api/game/{game_id}/{endpoint}"
+
+    def _asset_image_url(self, *, game_id: str, asset_kind: str) -> str | None:
+        meta = self._load_background_meta(game_id=game_id, asset_kind=asset_kind)
         if not meta:
             return None
 
@@ -428,26 +462,32 @@ class GameService:
         image_path = self._background_dir() / file_name
         if not image_path.is_file():
             return None
-        return f"/api/game/{game_id}/background"
+        return self._asset_endpoint_path(game_id, asset_kind)
 
-    def _store_background_image(self, game_id: str, generated: GeneratedImage) -> str:
+    def _story_background_image_url(self, game_id: str) -> str | None:
+        return self._asset_image_url(game_id=game_id, asset_kind=ASSET_KIND_STORY)
+
+    def _result_background_image_url(self, game_id: str) -> str | None:
+        return self._asset_image_url(game_id=game_id, asset_kind=ASSET_KIND_RESULT)
+
+    def _store_background_image(self, *, game_id: str, asset_kind: str, generated: GeneratedImage) -> str:
         media_type = generated.mime_type.strip().lower()
         extension = MEDIA_TYPE_TO_EXTENSION.get(media_type, "png")
         directory = self._background_dir()
         directory.mkdir(parents=True, exist_ok=True)
 
-        for existing in directory.glob(f"{game_id}.*"):
+        for existing in directory.glob(f"{game_id}.{asset_kind}.*"):
             if existing.is_file():
                 existing.unlink()
 
-        file_name = f"{game_id}.{extension}"
+        file_name = f"{game_id}.{asset_kind}.{extension}"
         image_path = directory / file_name
         image_path.write_bytes(generated.data)
 
-        meta_path = self._background_meta_path(game_id)
+        meta_path = self._background_meta_path(game_id=game_id, asset_kind=asset_kind)
         meta = {"file_name": file_name, "media_type": media_type}
         meta_path.write_text(json.dumps(meta), encoding="utf-8")
-        return f"/api/game/{game_id}/background"
+        return self._asset_endpoint_path(game_id, asset_kind)
 
     def _generate_story_background(
         self,
@@ -472,7 +512,49 @@ class GameService:
             return None
 
         try:
-            return self._store_background_image(game_id, generated)
+            return self._store_background_image(
+                game_id=game_id,
+                asset_kind=ASSET_KIND_STORY,
+                generated=generated,
+            )
+        except OSError as exc:
+            logger.warning("Failed to store background image for game_id=%s: %s", game_id, exc)
+            return None
+
+    def _generate_result_background(
+        self,
+        *,
+        game_id: str,
+        case_obj: CaseFile,
+        language_mode: LanguageMode,
+        score: int,
+        grade: str,
+        matches: dict[str, bool],
+    ) -> str | None:
+        try:
+            generated = self.llm_client.generate_result_background_image(
+                case_data=case_obj,
+                language_mode=language_mode,
+                score=score,
+                grade=grade,
+                matches=matches,
+            )
+        except LLMError as exc:
+            logger.warning("Result background image generation failed for game_id=%s: %s", game_id, exc)
+            return None
+
+        if generated is None:
+            return None
+        if not generated.data:
+            logger.warning("Result background image generation returned empty data for game_id=%s", game_id)
+            return None
+
+        try:
+            return self._store_background_image(
+                game_id=game_id,
+                asset_kind=ASSET_KIND_RESULT,
+                generated=generated,
+            )
         except OSError as exc:
             logger.warning("Failed to store background image for game_id=%s: %s", game_id, exc)
             return None

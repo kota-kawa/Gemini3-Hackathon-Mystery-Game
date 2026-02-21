@@ -178,6 +178,46 @@ def build_background_prompt(
     )
 
 
+def build_result_background_prompt(
+    *,
+    case_data: CaseFile,
+    language_mode: LanguageMode,
+    score: int,
+    grade: str,
+    matches: dict[str, bool],
+) -> str:
+    setting = case_data.setting
+    mood = "celebratory and bright"
+    if score < 50:
+        mood = "somber and reflective"
+    elif score < 70:
+        mood = "tense and uncertain"
+    elif score < 90:
+        mood = "hopeful and warm"
+
+    style_line = (
+        "かわいいアニメ調の背景イラストにしてください。"
+        if language_mode == LanguageMode.JA
+        else "Create a cute anime-style background illustration."
+    )
+    return (
+        "Create one visual-novel result-screen background image for this mystery game.\n"
+        f"{style_line}\n"
+        "- Keep the image free of UI, speech bubbles, text, logos, and watermark.\n"
+        "- Show environment only; avoid close-up portraits.\n"
+        "- No blood, injuries, or explicit violence.\n"
+        "- Compose the scene so it reads well in a 9:16 frame.\n"
+        f"- Overall mood should be {mood}.\n"
+        f"Result score: {score}\n"
+        f"Result grade: {grade}\n"
+        f"Match status: killer={matches.get('killer', False)}, motive={matches.get('motive', False)}, "
+        f"method={matches.get('method', False)}, trick={matches.get('trick', False)}\n"
+        f"Story location: {setting.location}\n"
+        f"Story time window: {setting.time_window}\n"
+        f"Story summary: {setting.summary}"
+    )
+
+
 def build_conversation_summary_prompt(
     *,
     history: list[dict[str, str]],

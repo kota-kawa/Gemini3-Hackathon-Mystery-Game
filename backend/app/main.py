@@ -188,3 +188,15 @@ def get_game_background(
 ) -> FileResponse:
     image_path, media_type = service.get_background_asset(game_id)
     return FileResponse(image_path, media_type=media_type)
+
+
+@app.get(
+    "/api/game/{game_id}/result-background",
+    responses={404: {"model": ErrorResponse}},
+)
+def get_game_result_background(
+    game_id: str,
+    service: GameService = Depends(get_game_service),
+) -> FileResponse:
+    image_path, media_type = service.get_result_background_asset(game_id)
+    return FileResponse(image_path, media_type=media_type)

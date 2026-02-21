@@ -334,6 +334,12 @@ def test_background_endpoint_returns_generated_image(client: TestClient) -> None
             )
             return GeneratedImage(data=png_bytes, mime_type="image/png")
 
+        def generate_result_background_image(self, **kwargs):
+            png_bytes = base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAwUBAO5+Qp8AAAAASUVORK5CYII="
+            )
+            return GeneratedImage(data=png_bytes, mime_type="image/png")
+
     def override_game_service() -> GameService:
         db = SessionLocal()
         return GameService(
@@ -353,10 +359,37 @@ def test_background_endpoint_returns_generated_image(client: TestClient) -> None
     state_res = client.get(f"/api/game/{game_id}")
     assert state_res.status_code == 200
     assert state_res.json()["background_image_url"] == f"/api/game/{game_id}/background"
+    assert state_res.json()["result_background_image_url"] is None
 
     bg_res = client.get(f"/api/game/{game_id}/background")
     assert bg_res.status_code == 200
     assert bg_res.headers["content-type"].startswith("image/png")
     assert len(bg_res.content) > 0
+
+    ready_res = client.post(f"/api/game/{game_id}/ready-to-guess")
+    assert ready_res.status_code == 204
+
+    suspect = state_res.json()["characters"][0]["name"]
+    guess_res = client.post(
+        f"/api/game/{game_id}/guess",
+        json={
+            "killer": suspect,
+            "motive": "financial pressure",
+            "method": "delayed gas release",
+            "trick": "magnetic latch reset",
+            "reasoning": "blackout timing and evidence line up",
+        },
+    )
+    assert guess_res.status_code == 200
+    assert guess_res.json()["result_background_image_url"] == f"/api/game/{game_id}/result-background"
+
+    result_state_res = client.get(f"/api/game/{game_id}")
+    assert result_state_res.status_code == 200
+    assert result_state_res.json()["result_background_image_url"] == f"/api/game/{game_id}/result-background"
+
+    result_bg_res = client.get(f"/api/game/{game_id}/result-background")
+    assert result_bg_res.status_code == 200
+    assert result_bg_res.headers["content-type"].startswith("image/png")
+    assert len(result_bg_res.content) > 0
 
     app.dependency_overrides = {}

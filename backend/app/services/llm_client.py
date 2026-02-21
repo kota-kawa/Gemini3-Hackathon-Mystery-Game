@@ -25,6 +25,7 @@ from .prompts import (
     build_case_generation_prompt,
     build_conversation_summary_prompt,
     build_contradiction_prompt,
+    build_result_background_prompt,
     build_scoring_prompt,
 )
 
@@ -90,6 +91,17 @@ class LLMClient:
         *,
         case_data: CaseFile,
         language_mode: LanguageMode,
+    ) -> GeneratedImage | None:
+        return None
+
+    def generate_result_background_image(
+        self,
+        *,
+        case_data: CaseFile,
+        language_mode: LanguageMode,
+        score: int,
+        grade: str,
+        matches: dict[str, bool],
     ) -> GeneratedImage | None:
         return None
 
@@ -418,6 +430,33 @@ class FallbackLLMClient(LLMClient):
             return self.fallback.generate_background_image(
                 case_data=case_data,
                 language_mode=language_mode,
+            )
+
+    def generate_result_background_image(
+        self,
+        *,
+        case_data: CaseFile,
+        language_mode: LanguageMode,
+        score: int,
+        grade: str,
+        matches: dict[str, bool],
+    ) -> GeneratedImage | None:
+        try:
+            return self.primary.generate_result_background_image(
+                case_data=case_data,
+                language_mode=language_mode,
+                score=score,
+                grade=grade,
+                matches=matches,
+            )
+        except (LLMError, ValueError) as exc:
+            logger.warning("Primary LLM failed in generate_result_background_image. Falling back to fake provider: %s", exc)
+            return self.fallback.generate_result_background_image(
+                case_data=case_data,
+                language_mode=language_mode,
+                score=score,
+                grade=grade,
+                matches=matches,
             )
 
 
@@ -794,6 +833,24 @@ class GeminiLLMClient(LLMClient):
         language_mode: LanguageMode,
     ) -> GeneratedImage | None:
         prompt = build_background_prompt(case_data=case_data, language_mode=language_mode)
+        return self._request_background_image_with_retry(prompt=prompt)
+
+    def generate_result_background_image(
+        self,
+        *,
+        case_data: CaseFile,
+        language_mode: LanguageMode,
+        score: int,
+        grade: str,
+        matches: dict[str, bool],
+    ) -> GeneratedImage | None:
+        prompt = build_result_background_prompt(
+            case_data=case_data,
+            language_mode=language_mode,
+            score=score,
+            grade=grade,
+            matches=matches,
+        )
         return self._request_background_image_with_retry(prompt=prompt)
 
 

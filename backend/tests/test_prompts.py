@@ -10,6 +10,7 @@ from app.services.prompts import (
     build_case_generation_prompt,
     build_conversation_summary_prompt,
     build_contradiction_prompt,
+    build_result_background_prompt,
     build_scoring_prompt,
 )
 
@@ -91,4 +92,19 @@ def test_background_prompt_mentions_story_context_and_ratio() -> None:
     prompt = build_background_prompt(case_data=case_data, language_mode=LanguageMode.JA)
     assert case_data.setting.location in prompt
     assert case_data.setting.time_window in prompt
+    assert "9:16" in prompt
+
+
+def test_result_background_prompt_mentions_score_and_grade() -> None:
+    case_data = _sample_case(LanguageMode.EN)
+    prompt = build_result_background_prompt(
+        case_data=case_data,
+        language_mode=LanguageMode.EN,
+        score=92,
+        grade="S",
+        matches={"killer": True, "motive": True, "method": True, "trick": True},
+    )
+    assert case_data.setting.location in prompt
+    assert "Result score: 92" in prompt
+    assert "Result grade: S" in prompt
     assert "9:16" in prompt

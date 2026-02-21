@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   ApiRequestError,
@@ -145,6 +145,7 @@ export default function App() {
   const [uiMode, setUiMode] = useState<UiMode>('dialogue');
   const [isQaLogExpanded, setIsQaLogExpanded] = useState(true);
   const [showBriefing, setShowBriefing] = useState(false);
+  const qaLogRef = useRef<HTMLDivElement>(null);
 
   const text = useMemo(() => t(languageMode), [languageMode]);
   const questionTemplates = useMemo(() => questionTemplatesFor(languageMode), [languageMode]);
@@ -173,6 +174,13 @@ export default function App() {
       setUiMode('dialogue');
     }
   }, [gameState?.status, screen]);
+
+  // Auto-scroll chat log when messages are updated
+  useEffect(() => {
+    if (qaLogRef.current && gameState?.messages && gameState.messages.length > 0) {
+      qaLogRef.current.scrollTop = qaLogRef.current.scrollHeight;
+    }
+  }, [gameState?.messages]);
 
   const handleStartGame = async () => {
     setLoading(true);
@@ -590,7 +598,7 @@ export default function App() {
                       </button>
                     </div>
                     {isQaLogExpanded && (
-                      <div className="chat-log full-height vn-qa-log">
+                      <div ref={qaLogRef} className="chat-log full-height vn-qa-log">
                         {gameState.messages.length === 0 && <p className="empty-log system-message">{text.noMessages}</p>}
                         {gameState.messages.map((message) => (
                           <article key={message.id} className="chat-item">

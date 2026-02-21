@@ -25,7 +25,7 @@ from .services.llm_client import build_llm_client
 from .services.scoring_service import ScoringService
 
 
-app = FastAPI(title="Shibuya Stream Mystery API", version="0.1.0")
+app = FastAPI(title="Locked-Room Mystery API", version="0.1.0")
 
 
 @app.on_event("startup")

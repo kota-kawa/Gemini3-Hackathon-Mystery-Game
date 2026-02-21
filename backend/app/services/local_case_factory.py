@@ -31,10 +31,10 @@ EN_TRAITS = ["meticulous", "calm", "discreet", "punctual", "observant", "competi
 def _pick_language_block(language_mode: LanguageMode) -> dict:
     if language_mode == LanguageMode.EN:
         return {
-            "title": "Shibuya Stream Locked-Room Incident",
+            "title": "Office Building Locked-Room Incident",
             "setting_summary": "The victim was found collapsed in a locked meeting room on 5F.",
             "time_window": "2026-02-21 09:00-12:00",
-            "location": "Shibuya Stream 5F",
+            "location": "Office Tower 5F",
             "victim_name": "Koichi Kuroda",
             "victim_job": "Operations Manager",
             "cause": "asphyxiation",
@@ -102,10 +102,10 @@ def _pick_language_block(language_mode: LanguageMode) -> dict:
         }
 
     return {
-        "title": "渋谷ストリーム密室事件",
+        "title": "高層ビル密室事件",
         "setting_summary": "5Fの会議室で被害者が密室状態で発見された。",
         "time_window": "2026-02-21 09:00-12:00",
-        "location": "渋谷ストリーム 5F",
+        "location": "高層ビル 5F",
         "victim_name": "黒田 恒一",
         "victim_job": "運営マネージャー",
         "cause": "窒息",

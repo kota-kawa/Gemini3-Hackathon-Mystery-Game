@@ -197,6 +197,12 @@ function resolveBackgroundImageUrl(state: GameStateResponse | null): string | nu
   return toApiUrl(path);
 }
 
+function normalizeDisplayedDate(rawDate: string): string {
+  return rawDate
+    .replace('2026-02-20', '2026-02-21')
+    .replace('2026年2月20日', '2026年2月21日');
+}
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>('title');
   const [languageMode, setLanguageMode] = useState<LanguageMode>('ja');
@@ -463,6 +469,7 @@ export default function App() {
   }, [screen, gameState?.status]);
 
   const storyFlow = [text.navStart, text.navGame, text.navGuess, text.navResult];
+  const isResultScreen = screen === 'result';
 
   const appShellStyle = useMemo(
     () =>
@@ -509,8 +516,19 @@ export default function App() {
     return `You can ask up to ${gameState.remaining_questions} questions. Use "Ask" to interrogate, review "Chat Log" and "Notebook", then submit your theory from "Guess".`;
   }, [gameState, languageMode]);
 
+  const displayedCaseDate = useMemo(() => {
+    if (!gameState) {
+      return '';
+    }
+    const rawDate = gameState.case_summary.time_window.split(' ')[0] ?? '';
+    return normalizeDisplayedDate(rawDate);
+  }, [gameState]);
+
   return (
-    <div className={`app-shell ${isImmersive ? 'app-shell-immersive' : ''}`} style={appShellStyle}>
+    <div
+      className={`app-shell ${isImmersive ? 'app-shell-immersive' : ''} ${isResultScreen ? 'app-shell-result' : ''}`}
+      style={appShellStyle}
+    >
       {screen === 'title' && (
         <>
           <header className="hero hero-title">
@@ -611,7 +629,7 @@ export default function App() {
         <div className="vn-container">
           {/* Top Left Badge */}
           <div className="vn-date-badge">
-            <span className="vn-date-text">{gameState.case_summary.time_window.split(' ')[0]}</span>
+            <span className="vn-date-text">{displayedCaseDate}</span>
             <span className="vn-location-text">{gameState.case_summary.location}</span>
           </div>
 

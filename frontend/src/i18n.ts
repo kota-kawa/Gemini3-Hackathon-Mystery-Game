@@ -2,7 +2,7 @@ import type { LanguageMode } from './types';
 
 const dictionary = {
   ja: {
-    appTitle: '渋谷ストリーム密室事件',
+    appTitle: '密室ミステリー',
     subtitle: '― あなたの推理が真実を紐解く ―',
     startGame: '新しい物語を始める',
     rulesTitle: '― 物語の進め方 ―',
@@ -103,7 +103,7 @@ const dictionary = {
     goGuess: '推理入力',
   },
   en: {
-    appTitle: 'Shibuya Stream Mystery',
+    appTitle: 'Locked-Room Mystery',
     subtitle: '― Your deduction reveals the truth ―',
     startGame: 'Begin a New Story',
     rulesTitle: '― How to Play ―',

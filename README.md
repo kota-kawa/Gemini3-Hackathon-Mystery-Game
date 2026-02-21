@@ -1,4 +1,4 @@
-# 🔍 Shibuya Stream Locked-Room Mystery
+# 🔍 Locked-Room Mystery
 
 > **An AI-powered detective game where Gemini acts as your Game Master**
 
@@ -8,7 +8,7 @@
 
 ## 🎮 What is this?
 
-This is an **interactive mystery-solving game** where an AI (Google Gemini) plays the role of Game Master (GM). Each playthrough generates a unique locked-room murder case set in Shibuya Stream. Question witnesses, gather evidence, and deduce the culprit before your questions run out!
+This is an **interactive mystery-solving game** where an AI (Google Gemini) plays the role of Game Master (GM). Each playthrough generates a unique locked-room murder case with any setting. Question witnesses, gather evidence, and deduce the culprit before your questions run out!
 
 ### ✨ Key Features
 
@@ -126,13 +126,13 @@ pytest -q
 <details>
 <summary>🇯🇵 日本語版 README</summary>
 
-# 🔍 渋谷ストリーム密室事件
+# 🔍 密室ミステリー
 
 > **AIがゲームマスターを務める即興推理ゲーム**
 
 ## 🎮 これは何？
 
-**Google Gemini** がゲームマスター（GM）となり、渋谷ストリームを舞台にした密室殺人事件を即興で進行する **インタラクティブ推理ゲーム** です。プレイするたびに新しい事件が生成され、証人への質問、証拠の収集、推理の提出を通じて犯人を当てます。
+**Google Gemini** がゲームマスター（GM）となり、あらゆる舞台設定の密室殺人事件を即興で進行する **インタラクティブ推理ゲーム** です。プレイするたびに新しい事件が生成され、証人への質問、証拠の収集、推理の提出を通じて犯人を当てます。
 
 ### ✨ 主な機能
 

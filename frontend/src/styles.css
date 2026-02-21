@@ -103,6 +103,18 @@ body::before {
   pointer-events: none;
 }
 
+.app-shell-immersive.app-shell-result::before {
+  background-image:
+    linear-gradient(180deg, rgba(8, 8, 12, 0.18) 0%, rgba(8, 8, 12, 0.38) 100%),
+    var(--story-background-url);
+}
+
+.app-shell-immersive.app-shell-result::after {
+  background:
+    radial-gradient(circle at 15% 25%, rgba(149, 117, 205, 0.1) 0%, transparent 38%),
+    radial-gradient(circle at 80% 80%, rgba(184, 160, 112, 0.08) 0%, transparent 45%);
+}
+
 .novel-topbar {
   display: flex;
   align-items: flex-start;

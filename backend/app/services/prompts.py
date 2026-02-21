@@ -33,7 +33,7 @@ def build_case_generation_prompt(language_mode: LanguageMode, now: datetime | No
         f"{language_line}\n"
         f"{datetime_line}\n"
         "Core constraints:\n"
-        "- Setting must clearly evoke Shibuya Stream 5F.\n"
+        "- Setting can be any location (office, hotel, school, laboratory, mansion, ship, etc.).\n"
         "- Include exactly one killer and one liar (different people).\n"
         "- Characters: 4 to 6.\n"
         "- Evidence: at least 7 items.\n"

@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "Shibuya Stream Locked-Room Mystery API"
+    app_name: str = "Locked-Room Mystery API"
     api_prefix: str = "/api"
     database_url: str = "sqlite:///./mystery_game.db"
     max_questions: int = 12

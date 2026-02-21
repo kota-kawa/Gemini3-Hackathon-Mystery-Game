@@ -51,14 +51,22 @@ npm run dev
 ## 環境変数
 - `LLM_PROVIDER`: `fake` or `gemini`（デフォルト: `fake`）
 - `GEMINI_API_KEY`: Gemini利用時に必須
-- `GEMINI_MODEL`: デフォルト `gemini-2.0-flash`
+- `GEMINI_MODEL`: デフォルト `gemini-3-flash-preview`
+- `GEMINI_API_VERSION`: デフォルト `v1beta`
+- `GEMINI_THINKING_LEVEL`: `minimal|low|medium|high`（デフォルト `minimal`）
+- `GEMINI_RETRY_DELAY_SEC`: リトライ初期待機秒（デフォルト `0.8`）
+- `GEMINI_RETRY_MAX_DELAY_SEC`: リトライ最大待機秒（デフォルト `20`）
+- `GEMINI_MAX_ATTEMPTS`: 1リクエストあたりの最大試行回数（デフォルト `5`）
+- `GEMINI_FALLBACK_TO_FAKE`: デフォルト `false`（`true`のときのみGemini障害時に`fake`へフォールバック）
 - `DATABASE_URL`: デフォルト `sqlite:///./mystery_game.db`
 - `MAX_QUESTIONS`: デフォルト `12`
 - `VITE_API_BASE_URL`: デフォルト `http://localhost:8000`
 
 ## Gemini利用
 `LLM_PROVIDER=gemini` を指定すると、事件生成・応答・矛盾チェック・採点でGemini APIを使用します。
-Gemini通信失敗時は `502 GEMINI_UNAVAILABLE` を返します。
+バックエンドは公式 `google-genai` SDK で Gemini API を呼び出し、`429/5xx` 系エラー時は指数バックオフで再試行します。
+低遅延で返す場合は `GEMINI_THINKING_LEVEL=minimal` を使用します（Gemini 3 の推奨設定）。
+`GEMINI_FALLBACK_TO_FAKE=false`（デフォルト）ではGeminiが最終的に失敗した場合 `502 GEMINI_UNAVAILABLE` を返します。
 
 ## APIテスト
 ```bash

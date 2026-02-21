@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import json
+import logging
 import random
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
-import httpx
+from google import genai
+from google.genai import errors as genai_errors
+from google.genai import types as genai_types
+from pydantic import BaseModel
 
 from ..config import Settings
 from ..enums import LanguageMode
@@ -19,6 +23,10 @@ from .prompts import (
     build_contradiction_prompt,
     build_scoring_prompt,
 )
+
+
+logger = logging.getLogger(__name__)
+RETRIABLE_GEMINI_STATUS_CODES = {408, 429, 500, 502, 503, 504}
 
 
 class LLMError(RuntimeError):
@@ -166,8 +174,108 @@ class FakeLLMClient(LLMClient):
 
 
 @dataclass
+class FallbackLLMClient(LLMClient):
+    primary: LLMClient
+    fallback: LLMClient
+
+    def generate_case(self, language_mode: LanguageMode) -> dict:
+        try:
+            return self.primary.generate_case(language_mode)
+        except (LLMError, ValueError) as exc:
+            logger.warning("Primary LLM failed in generate_case. Falling back to fake provider: %s", exc)
+            return self.fallback.generate_case(language_mode)
+
+    def answer_question(
+        self,
+        *,
+        case_data: CaseFile,
+        question: str,
+        target: str | None,
+        history: list[dict],
+        language_mode: LanguageMode,
+    ) -> str:
+        try:
+            return self.primary.answer_question(
+                case_data=case_data,
+                question=question,
+                target=target,
+                history=history,
+                language_mode=language_mode,
+            )
+        except (LLMError, ValueError) as exc:
+            logger.warning("Primary LLM failed in answer_question. Falling back to fake provider: %s", exc)
+            return self.fallback.answer_question(
+                case_data=case_data,
+                question=question,
+                target=target,
+                history=history,
+                language_mode=language_mode,
+            )
+
+    def contradiction_check(
+        self,
+        *,
+        case_data: CaseFile,
+        question: str,
+        answer: str,
+        language_mode: LanguageMode,
+    ) -> dict:
+        try:
+            return self.primary.contradiction_check(
+                case_data=case_data,
+                question=question,
+                answer=answer,
+                language_mode=language_mode,
+            )
+        except (LLMError, ValueError) as exc:
+            logger.warning("Primary LLM failed in contradiction_check. Falling back to fake provider: %s", exc)
+            return self.fallback.contradiction_check(
+                case_data=case_data,
+                question=question,
+                answer=answer,
+                language_mode=language_mode,
+            )
+
+    def score_guess(
+        self,
+        *,
+        case_data: CaseFile,
+        guess: GuessRequest,
+        language_mode: LanguageMode,
+    ) -> dict | None:
+        try:
+            return self.primary.score_guess(
+                case_data=case_data,
+                guess=guess,
+                language_mode=language_mode,
+            )
+        except (LLMError, ValueError) as exc:
+            logger.warning("Primary LLM failed in score_guess. Falling back to fake provider: %s", exc)
+            return self.fallback.score_guess(
+                case_data=case_data,
+                guess=guess,
+                language_mode=language_mode,
+            )
+
+
+@dataclass
 class GeminiLLMClient(LLMClient):
     settings: Settings
+    _client: genai.Client | None = field(default=None, init=False, repr=False)
+    _supported_thinking_levels = {"minimal", "low", "medium", "high"}
+
+    def _get_client(self) -> genai.Client:
+        if not self.settings.gemini_api_key:
+            raise LLMError("Missing GEMINI_API_KEY")
+
+        if self._client is None:
+            api_version = self.settings.gemini_api_version.strip()
+            if api_version:
+                http_options = genai_types.HttpOptions(api_version=api_version)
+                self._client = genai.Client(api_key=self.settings.gemini_api_key, http_options=http_options)
+            else:
+                self._client = genai.Client(api_key=self.settings.gemini_api_key)
+        return self._client
 
     def _extract_json(self, raw_text: str) -> dict:
         cleaned = raw_text.strip()
@@ -182,58 +290,147 @@ class GeminiLLMClient(LLMClient):
                 raise LLMError("Gemini response is not valid JSON")
             return json.loads(match.group(0))
 
-    def _request(self, *, prompt: str, response_mime_type: str = "text/plain") -> str:
-        if not self.settings.gemini_api_key:
-            raise LLMError("Missing GEMINI_API_KEY")
+    @staticmethod
+    def _format_api_error(exc: genai_errors.APIError) -> str:
+        code = getattr(exc, "code", None)
+        status = getattr(exc, "status", None)
+        message = getattr(exc, "message", str(exc))
+        if code is None:
+            return f"Gemini API error ({status}): {message}"
+        return f"Gemini API error {code} ({status}): {message}"
 
-        url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/{self.settings.gemini_model}:generateContent"
-            f"?key={self.settings.gemini_api_key}"
-        )
+    @staticmethod
+    def _extract_response_text(response: Any) -> str:
+        text: str = ""
+        try:
+            candidate_text = response.text
+            if isinstance(candidate_text, str):
+                text = candidate_text.strip()
+        except (ValueError, AttributeError):
+            text = ""
 
-        payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": 0.4,
-                "responseMimeType": response_mime_type,
-            },
+        if text:
+            return text
+
+        candidates = getattr(response, "candidates", None) or []
+        for candidate in candidates:
+            content = getattr(candidate, "content", None)
+            parts = getattr(content, "parts", None) or []
+            for part in parts:
+                part_text = getattr(part, "text", None)
+                if isinstance(part_text, str) and part_text.strip():
+                    return part_text.strip()
+
+        prompt_feedback = getattr(response, "prompt_feedback", None)
+        block_reason = getattr(prompt_feedback, "block_reason", None)
+        if block_reason:
+            raise LLMError(f"Gemini response blocked by safety filter: {block_reason}")
+        raise LLMError("Gemini returned empty text")
+
+    def _request(
+        self,
+        *,
+        prompt: str,
+        response_mime_type: str = "text/plain",
+        response_schema: type[BaseModel] | None = None,
+    ) -> str:
+        config_kwargs: dict[str, Any] = {
+            "temperature": 0.4,
+            "response_mime_type": response_mime_type,
         }
+        if response_schema is not None:
+            config_kwargs["response_schema"] = response_schema
 
-        with httpx.Client(timeout=self.settings.gemini_timeout_sec) as client:
-            response = client.post(url, json=payload)
+        thinking_level = self.settings.gemini_thinking_level.strip().lower()
+        if thinking_level:
+            if thinking_level not in self._supported_thinking_levels:
+                supported = ", ".join(sorted(self._supported_thinking_levels))
+                raise LLMError(f"Invalid GEMINI_THINKING_LEVEL='{thinking_level}'. Supported: {supported}")
+            config_kwargs["thinking_config"] = genai_types.ThinkingConfig(thinking_level=thinking_level)
 
-        if response.status_code >= 400:
-            raise LLMError(f"Gemini HTTP error {response.status_code}")
+        config = genai_types.GenerateContentConfig(**config_kwargs)
+        response = self._get_client().models.generate_content(
+            model=self.settings.gemini_model,
+            contents=prompt,
+            config=config,
+        )
+        return self._extract_response_text(response)
 
-        data = response.json()
-        candidates = data.get("candidates") or []
-        if not candidates:
-            raise LLMError("Gemini returned no candidates")
+    def _should_retry(self, exc: genai_errors.APIError) -> bool:
+        code = getattr(exc, "code", None)
+        return isinstance(code, int) and code in RETRIABLE_GEMINI_STATUS_CODES
 
-        content = candidates[0].get("content", {})
-        parts = content.get("parts") or []
-        if not parts:
-            raise LLMError("Gemini returned empty content")
+    def _next_delay_sec(self, attempt: int) -> float:
+        base = max(self.settings.gemini_retry_delay_sec, 0.1)
+        max_delay = max(self.settings.gemini_retry_max_delay_sec, base)
+        exponential = base * (2**attempt)
+        jitter = random.uniform(0, base)
+        return min(exponential + jitter, max_delay)
 
-        text = parts[0].get("text", "").strip()
-        if not text:
-            raise LLMError("Gemini returned empty text")
-        return text
-
-    def _request_with_retry(self, *, prompt: str, response_mime_type: str) -> str:
+    def _request_with_retry(
+        self,
+        *,
+        prompt: str,
+        response_mime_type: str,
+        response_schema: type[BaseModel] | None = None,
+    ) -> str:
         errors: list[str] = []
-        for attempt in range(2):
+        max_attempts = max(1, self.settings.gemini_max_attempts)
+        for attempt in range(max_attempts):
             try:
-                return self._request(prompt=prompt, response_mime_type=response_mime_type)
-            except (httpx.HTTPError, LLMError, ValueError) as exc:
+                return self._request(
+                    prompt=prompt,
+                    response_mime_type=response_mime_type,
+                    response_schema=response_schema,
+                )
+            except genai_errors.APIError as exc:
+                errors.append(self._format_api_error(exc))
+                if attempt >= max_attempts - 1 or not self._should_retry(exc):
+                    break
+                delay_sec = self._next_delay_sec(attempt)
+                logger.warning(
+                    "Gemini request failed with retriable error (attempt %s/%s): %s. Sleeping %.2fs.",
+                    attempt + 1,
+                    max_attempts,
+                    self._format_api_error(exc),
+                    delay_sec,
+                )
+                time.sleep(delay_sec)
+            except LLMError as exc:
                 errors.append(str(exc))
-                if attempt == 0:
-                    time.sleep(self.settings.gemini_retry_delay_sec)
+                if attempt >= max_attempts - 1:
+                    break
+                delay_sec = self._next_delay_sec(attempt)
+                logger.warning(
+                    "Gemini response handling failed (attempt %s/%s): %s. Sleeping %.2fs.",
+                    attempt + 1,
+                    max_attempts,
+                    exc,
+                    delay_sec,
+                )
+                time.sleep(delay_sec)
+            except Exception as exc:  # pragma: no cover - defensive guard
+                errors.append(f"{type(exc).__name__}: {exc}")
+                if attempt >= max_attempts - 1:
+                    break
+                delay_sec = self._next_delay_sec(attempt)
+                logger.warning(
+                    "Unexpected Gemini request error (attempt %s/%s): %s. Sleeping %.2fs.",
+                    attempt + 1,
+                    max_attempts,
+                    exc,
+                    delay_sec,
+                )
+                time.sleep(delay_sec)
         raise LLMError("; ".join(errors))
 
     def generate_case(self, language_mode: LanguageMode) -> dict:
         prompt = build_case_generation_prompt(language_mode)
-        raw = self._request_with_retry(prompt=prompt, response_mime_type="application/json")
+        raw = self._request_with_retry(
+            prompt=prompt,
+            response_mime_type="application/json",
+            response_schema=CaseFile,
+        )
         return self._extract_json(raw)
 
     def answer_question(
@@ -286,5 +483,8 @@ class GeminiLLMClient(LLMClient):
 def build_llm_client(settings: Settings) -> LLMClient:
     provider = settings.llm_provider.lower().strip()
     if provider == "gemini":
-        return GeminiLLMClient(settings=settings)
+        gemini = GeminiLLMClient(settings=settings)
+        if settings.gemini_fallback_to_fake:
+            return FallbackLLMClient(primary=gemini, fallback=FakeLLMClient())
+        return gemini
     return FakeLLMClient()

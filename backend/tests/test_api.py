@@ -3,11 +3,13 @@ from collections.abc import Generator
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import get_settings
+from app.config import Settings, get_settings
 from app.database import Base, SessionLocal, engine
+from app.enums import LanguageMode
 from app.main import app, get_game_service
 from app.services.game_service import GameService
-from app.services.llm_client import LLMClient, LLMError
+from app.services.local_case_factory import build_local_case
+from app.services.llm_client import GeminiLLMClient, LLMClient, LLMError
 from app.services.scoring_service import ScoringService
 
 
@@ -23,6 +25,15 @@ class FailingLLMClient(LLMClient):
 
     def score_guess(self, **kwargs):
         raise LLMError("forced failure")
+
+
+@pytest.fixture(autouse=True)
+def isolate_settings_env(monkeypatch: pytest.MonkeyPatch) -> Generator[None, None, None]:
+    monkeypatch.setenv("LLM_PROVIDER", "fake")
+    monkeypatch.setenv("GEMINI_FALLBACK_TO_FAKE", "false")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)
@@ -125,6 +136,71 @@ def test_invalid_language_returns_400(client: TestClient) -> None:
     res = client.patch(f"/api/game/{game_id}/language", json={"language_mode": "fr"})
     assert res.status_code == 400
     assert res.json()["error_code"] == "INVALID_REQUEST"
+
+
+def test_ask_succeeds_when_contradiction_check_fails(client: TestClient) -> None:
+    class ContradictionFailingLLMClient(LLMClient):
+        def generate_case(self, language_mode: LanguageMode):
+            return build_local_case(language_mode)
+
+        def answer_question(self, **kwargs):
+            return "停電の空白時間をまず確認してください。"
+
+        def contradiction_check(self, **kwargs):
+            raise LLMError("forced contradiction failure")
+
+        def score_guess(self, **kwargs):
+            return None
+
+    def override_game_service() -> GameService:
+        db = SessionLocal()
+        return GameService(
+            db=db,
+            llm_client=ContradictionFailingLLMClient(),
+            scoring_service=ScoringService(),
+            settings=get_settings(),
+        )
+
+    app.dependency_overrides[get_game_service] = override_game_service
+
+    create_res = client.post("/api/game/new", json={"language_mode": "ja"})
+    assert create_res.status_code == 201
+    game_id = create_res.json()["game_id"]
+
+    ask_res = client.post(
+        f"/api/game/{game_id}/ask",
+        json={"question": "手掛かりは?", "target": "overall"},
+    )
+    assert ask_res.status_code == 200
+    assert "停電の空白時間" in ask_res.json()["answer_text"]
+
+    app.dependency_overrides = {}
+
+
+def test_gemini_provider_falls_back_to_fake(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def override_settings() -> Settings:
+        return Settings(
+            llm_provider="gemini",
+            gemini_api_key="dummy-key",
+            gemini_fallback_to_fake=True,
+        )
+
+    def force_gemini_failure(self, *, prompt: str, response_mime_type: str, response_schema=None) -> str:
+        raise LLMError("forced gemini failure")
+
+    monkeypatch.setattr(GeminiLLMClient, "_request_with_retry", force_gemini_failure)
+    app.dependency_overrides[get_settings] = override_settings
+
+    create_res = client.post("/api/game/new", json={"language_mode": "ja"})
+    assert create_res.status_code == 201
+    game_id = create_res.json()["game_id"]
+
+    ask_res = client.post(
+        f"/api/game/{game_id}/ask",
+        json={"question": "証拠を1つ教えて", "target": "overall"},
+    )
+    assert ask_res.status_code == 200
+    assert isinstance(ask_res.json()["answer_text"], str)
 
 
 def test_gemini_failure_returns_502(client: TestClient) -> None:

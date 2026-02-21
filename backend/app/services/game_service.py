@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 
 from pydantic import ValidationError
@@ -23,6 +24,8 @@ from ..schemas import (
 )
 from .llm_client import LLMClient, LLMError
 from .scoring_service import ScoringService
+
+logger = logging.getLogger(__name__)
 
 
 class GameService:
@@ -93,6 +96,13 @@ class GameService:
                 history=history,
                 language_mode=LanguageMode(game.language_mode),
             )
+        except LLMError as exc:
+            raise gemini_error(
+                "通信に失敗しました。再試行してください。",
+                detail={"cause": str(exc)},
+            ) from exc
+
+        try:
             contradiction = self.llm_client.contradiction_check(
                 case_data=case_obj,
                 question=request.question,
@@ -100,10 +110,8 @@ class GameService:
                 language_mode=LanguageMode(game.language_mode),
             )
         except LLMError as exc:
-            raise gemini_error(
-                "通信に失敗しました。再試行してください。",
-                detail={"cause": str(exc)},
-            ) from exc
+            logger.warning("Contradiction check failed; using original answer without rewrite: %s", exc)
+            contradiction = {"contradiction": False, "fixed_answer": answer}
 
         if not isinstance(contradiction, dict):
             contradiction = {}
@@ -246,7 +254,11 @@ class GameService:
             try:
                 payload = self.llm_client.generate_case(language_mode)
                 return CaseFile.model_validate(payload)
-            except (LLMError, ValueError, ValidationError) as exc:
+            except LLMError as exc:
+                # LLM client already handles retry internally; avoid retry storms on provider errors.
+                errors.append(str(exc))
+                break
+            except (ValueError, ValidationError) as exc:
                 errors.append(str(exc))
 
         raise gemini_error(

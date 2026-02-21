@@ -11,9 +11,13 @@ class Settings(BaseSettings):
     max_questions: int = 12
     llm_provider: str = "fake"
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-2.0-flash"
-    gemini_timeout_sec: float = 12.0
+    gemini_model: str = "gemini-3-flash-preview"
+    gemini_api_version: str = "v1beta"
+    gemini_thinking_level: str = "minimal"
     gemini_retry_delay_sec: float = 0.8
+    gemini_retry_max_delay_sec: float = 20.0
+    gemini_max_attempts: int = 5
+    gemini_fallback_to_fake: bool = False
     cors_allow_origins: list[str] = Field(default_factory=lambda: ["*"])
 
     model_config = SettingsConfigDict(

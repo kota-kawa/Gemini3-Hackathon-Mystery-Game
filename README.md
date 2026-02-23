@@ -1,4 +1,15 @@
+> 一番下に日本語版もあります
+
 # 🔍 Locked-Room Mystery
+
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini-8E75B2?logo=googlegemini&logoColor=white)
 
 > **An AI-powered detective game where Gemini acts as your Game Master**
 
@@ -104,6 +115,20 @@ npm run dev
 │   └── src/          # React application
 └── docker-compose.yml
 ```
+
+## 🖥️ UI Preview
+
+<p align="center">
+  <img src="assets/images/Gemini3-Hackathon-Mystery-Game-ScreenShot.png" alt="UI Preview" width="1100">
+</p>
+
+## 🎬 Demo Video
+
+Click the thumbnail to open the video on YouTube.
+
+| [![Demo Video](https://img.youtube.com/vi/OwgDX0RYm6Y/hqdefault.jpg)](https://youtu.be/OwgDX0RYm6Y) |
+| --- |
+| Demo Video |
 
 ## 🧪 Running Tests
 
@@ -228,6 +253,20 @@ npm run dev
 │   └── src/          # React アプリケーション
 └── docker-compose.yml
 ```
+
+## 🖥️ UI プレビュー
+
+<p align="center">
+  <img src="assets/images/Gemini3-Hackathon-Mystery-Game-ScreenShot.png" alt="UI プレビュー" width="1100">
+</p>
+
+## 🎬 デモ動画
+
+サムネイルをクリックするとYouTubeで動画が開きます。
+
+| [![デモ動画](https://img.youtube.com/vi/OwgDX0RYm6Y/hqdefault.jpg)](https://youtu.be/OwgDX0RYm6Y) |
+| --- |
+| デモ動画 |
 
 ## 🧪 テスト実行
 

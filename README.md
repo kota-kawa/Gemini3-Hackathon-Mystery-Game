@@ -13,9 +13,19 @@
 
 > **An AI-powered detective game where Gemini acts as your Game Master**
 
-![Game Type](https://img.shields.io/badge/Game-Mystery%20Detective-purple)
-![AI](https://img.shields.io/badge/AI-Gemini%203-blue)
-![Stack](https://img.shields.io/badge/Stack-FastAPI%20%2B%20React-green)
+## 🖥️ UI Preview
+
+<p align="center">
+  <img src="assets/images/Gemini3-Hackathon-Mystery-Game-ScreenShot.png" alt="UI Preview" width="1100">
+</p>
+
+## 🎬 Demo Video
+
+Click the thumbnail to open the video on YouTube.
+
+| [![Demo Video](https://img.youtube.com/vi/OwgDX0RYm6Y/hqdefault.jpg)](https://youtu.be/OwgDX0RYm6Y) |
+| --- |
+| Demo Video |
 
 ## 🎮 What is this?
 
@@ -116,20 +126,6 @@ npm run dev
 └── docker-compose.yml
 ```
 
-## 🖥️ UI Preview
-
-<p align="center">
-  <img src="assets/images/Gemini3-Hackathon-Mystery-Game-ScreenShot.png" alt="UI Preview" width="1100">
-</p>
-
-## 🎬 Demo Video
-
-Click the thumbnail to open the video on YouTube.
-
-| [![Demo Video](https://img.youtube.com/vi/OwgDX0RYm6Y/hqdefault.jpg)](https://youtu.be/OwgDX0RYm6Y) |
-| --- |
-| Demo Video |
-
 ## 🧪 Running Tests
 
 ```bash
@@ -154,6 +150,20 @@ pytest -q
 # 🔍 密室ミステリー
 
 > **AIがゲームマスターを務める即興推理ゲーム**
+
+## 🖥️ UI プレビュー
+
+<p align="center">
+  <img src="assets/images/Gemini3-Hackathon-Mystery-Game-ScreenShot.png" alt="UI プレビュー" width="1100">
+</p>
+
+## 🎬 デモ動画
+
+サムネイルをクリックするとYouTubeで動画が開きます。
+
+| [![デモ動画](https://img.youtube.com/vi/OwgDX0RYm6Y/hqdefault.jpg)](https://youtu.be/OwgDX0RYm6Y) |
+| --- |
+| デモ動画 |
 
 ## 🎮 これは何？
 
@@ -253,20 +263,6 @@ npm run dev
 │   └── src/          # React アプリケーション
 └── docker-compose.yml
 ```
-
-## 🖥️ UI プレビュー
-
-<p align="center">
-  <img src="assets/images/Gemini3-Hackathon-Mystery-Game-ScreenShot.png" alt="UI プレビュー" width="1100">
-</p>
-
-## 🎬 デモ動画
-
-サムネイルをクリックするとYouTubeで動画が開きます。
-
-| [![デモ動画](https://img.youtube.com/vi/OwgDX0RYm6Y/hqdefault.jpg)](https://youtu.be/OwgDX0RYm6Y) |
-| --- |
-| デモ動画 |
 
 ## 🧪 テスト実行
 
